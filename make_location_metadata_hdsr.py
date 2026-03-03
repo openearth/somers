@@ -34,7 +34,8 @@ import assign_top10
 import assign_timeseriesstats
 
 # globals
-cf = r"C:\projecten\grondwater_monitoring\nobv\2023\connection_online_qsomers.txt"
+# cf = r"C:\projecten\grondwater_monitoring\nobv\2023\connection_online_qsomers.txt"
+cf = r"c:\src\git_repositories\somers\config_db.txt"
 # cf = r"C:\develop\extensometer\connection_online.txt"
 
 session, engine = establishconnection(cf)
