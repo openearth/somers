@@ -1,0 +1,45 @@
+[project]
+maintainers = [
+    {name = "Gerrit Hendriksen", email = "Gerrit.Hendriksen@deltares.nl"},
+    {name = "Nathalie Dees", email = "Nathalie.Dees@deltares.nl"},
+    {name = "Jesse Reusen", email = "jesse.reusen@deltares.nl"},
+    {name = "Cas Berns", email = "Cas.Berns@deltares.nl"},
+]
+dependencies = [
+    "hydropandas",
+    "matplotlib",
+    "pandas",
+    "numpy",
+    "scipy",
+    "sqlalchemy~=2.0",
+    "owslib",
+    "psycopg2-binary",
+    "geoalchemy2"]
+description = "QSOMERS"
+name = "somers"
+requires-python = ">= 3.12"
+version = "0.1.0"
+
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling"]
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["win-64"]
+
+[tool.pixi.pypi-dependencies]
+somers = { path = ".", editable = true }
+
+[tool.pixi.dependencies]
+python = "3.*"
+pip = "24.*"
+geoalchemy2 = "*"
+ipykernel = "6.*"
+owslib = "*"
+psycopg2-binary = "*"
+sqlalchemy = "2.*"
+matplotlib = "*"
+pandas = "*"
+numpy = "*"
+scipy = "*"
