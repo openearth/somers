@@ -1,7 +1,11 @@
 # %%
+import time
+
 import numpy as np
 import pandas as pd
 from pathlib import Path
+
+start = time.time()
 
 
 def fill_ja_nee(value):
@@ -10,6 +14,14 @@ def fill_ja_nee(value):
     else:
         return "nee"
 
+
+LOCATION_FULLNAMES = {
+    "ALB": "Aldeboarn",
+    "ASD": "Assendelft",
+    "ROV": "Rouveen",
+    "VLI": "Vlist",
+    "ZEG": "Zegveld",
+}
 
 gwm_header_format = (
     "# naam_meetpunt: {naam_meetpunt}\n"
@@ -46,42 +58,64 @@ swm_header_format = (
 )
 
 # %%
-basedir = Path(r"P:/11207812-somers-ontwikkeling/database_grondwater")
+basedir = Path(r"p:/11207812-somers-ontwikkeling/3-somers_development/QSOMERS")
 data_dir = Path(
-    r"P:\broeikasgassen-veenweiden\Grondwater\grondwaterstandanalyse\data\4-output\Gecorrigeerde_grondwaterstanden\gecorrigeerd"
+    r"p:/broeikasgassen-veenweiden/Grondwater/grondwaterstandanalyse/data/4-output/Gecorrigeerde_grondwaterstanden_hourly/gecorrigeerd"
 )
 sites = ["ASD", "ROV", "VLI", "ALB", "ZEG"]
 
+folder_names = {"ASD": "ASD", "ROV": "ROU", "VLI": "VLI", "ALB": "ALB", "ZEG": "ZEG"}
+
+metadata = pd.read_excel(
+    basedir.joinpath("NOBV", "2026", "overzicht_nobv_2026.xlsx"),
+    index_col="naam_meetpunt",
+)
+
+metadata = metadata[metadata.index.str.contains("|".join(sites))]
+
+# er moet een diver aanwezig zijn en het peil dat gemeten is moet het grondwaterpeil zijn
+mask_gwms = (metadata["Diver"] == "ja") & (metadata["categorie"] == "grondwaterpeil")
+selection_gwms = metadata[mask_gwms]
+
+# er moet een diver aanwezig zijn en het peil dat gemeten is moet het slootpeil zijn
+mask_swms = (metadata["Diver"] == "ja") & (metadata["categorie"] == "slootpeil")
+selection_swms = metadata[mask_swms]
+selection_swms.drop(
+    "ZEG_OP_13_10", inplace=True
+)  # drop ZEG_OP_13_10 from the list of measurements
+
 for site in sites:
-    metadata = pd.read_excel(
-        basedir.joinpath("NOBV", "overzicht_nobv_type1.xlsx"), index_col="naam_meetpunt"
-    )
-    metadata_site = metadata[
-        metadata.index.str.contains(site) & ~metadata.index.str.contains("MP")
+
+    print(f"Analyzing {LOCATION_FULLNAMES[site]}")
+    # here we select only the rows for a specific site, and exclude the MP measurements
+    metadata_site_gwms = selection_gwms[
+        selection_gwms.index.str.contains(site)
+        & ~selection_gwms.index.str.contains("MP")
     ]
 
-    mask_gwms = (metadata_site["Diver"] == "ja") & (
-        metadata_site["categorie"] == "grondwaterpeil"
-    )
-    selection_gwms = metadata_site[mask_gwms]
-
-    mask_swms = (metadata_site["Diver"] == "ja") & (
-        metadata_site["categorie"] == "slootpeil"
-    )
-    selection_swms = metadata_site[mask_swms]
-
     if site == "ZEG":
-        selection_gwms = selection_gwms[selection_gwms.index.str.contains("RF16")]
+        metadata_site_gwms = metadata_site_gwms[
+            metadata_site_gwms.index.str.contains("RF16")
+        ]
 
-    for naam_meetpunt, metadata_meetpunt in selection_gwms.iterrows():
-        print(metadata_meetpunt)
-        fill_values = metadata_meetpunt.to_dict()
+    well_names_gwm = metadata_site_gwms.index.tolist()
+
+    for well_name_gwm in well_names_gwm:
+        selection_gwms_single_well = metadata_site_gwms[
+            metadata_site_gwms.index == well_name_gwm
+        ]
+
+        metadata_single_well = selection_gwms_single_well.squeeze(axis=0)
+
+        fill_values = metadata_single_well.to_dict()
         new_lines = {
-            "naam_meetpunt": naam_meetpunt,
+            "naam_meetpunt": well_name_gwm,
             "gefundeerd (ja/nee)": "ja",
             "greppel aanwezig (ja/nee)": "nee",
             "drains aanwezig (ja/nee)": "nee",
-            "WIS aanwezig (ja/nee)": fill_ja_nee(metadata_meetpunt["WIS afstand (m)"]),
+            "WIS aanwezig (ja/nee)": fill_ja_nee(
+                metadata_single_well["WIS afstand (m)"]
+            ),
             "greppelafstand (m)": np.nan,
             "greppeldiepte (m-mv)": np.nan,
             "drainafstand (m)": np.nan,
@@ -91,102 +125,118 @@ for site in sites:
         header = gwm_header_format.format(**fill_values)
 
         data = pd.read_csv(
-            data_dir.joinpath(site, f"{naam_meetpunt}.csv"), parse_dates=["Datum"]
+            data_dir.joinpath(folder_names[site], f"{well_name_gwm}.csv"),
+            parse_dates=["Datum"],
         )
         data.columns = ["datumtijd", "grondwaterstand (m NAP)"]
         data["grondwaterstand (m NAP)"] = data["grondwaterstand (m NAP)"] / 100
-        data["datumtijd"] = data["datumtijd"].dt.strftime("%d-%m-%Y")
+        data["datumtijd"] = data["datumtijd"].dt.strftime("%d-%m-%Y %H:%M:%S")
 
-        # path_out = f'P:/11207812-somers-ontwikkeling/database_grondwater/handmatige_uitvraag_bestanden/NOBV/GWM_{naam_meetpunt}.txt'
-        # with open(path_out, 'w') as fp:
-        #     fp.write(header)
+        path_out = f"p:/11207812-somers-ontwikkeling/3-somers_development/QSOMERS/NOBV/2026/Grondwaterreeksen/GWM_{well_name_gwm}.txt"
+        with open(path_out, "w") as fp:
+            fp.write(header)
 
-        # data.to_csv(path_out, mode='a', sep=';', index=False, header=False)
+        data.to_csv(path_out, mode="a", sep=";", index=False, header=False)
 
-    for naam_meetpunt, metadata_meetpunt in selection_swms.iterrows():
-        print(naam_meetpunt)
-        fill_values = metadata_meetpunt.to_dict()
-        fill_values.update({"naam_meetpunt": naam_meetpunt})
+    metadata_site_swms = selection_swms[
+        selection_swms.index.str.contains(site)
+        & ~selection_swms.index.str.contains("MP")
+    ]
+
+    well_names_swm = metadata_site_swms.index.tolist()
+
+    for well_name_swm in well_names_swm:
+        selection_swms_single_well = metadata_site_swms[
+            metadata_site_swms.index == well_name_swm
+        ]
+
+        metadata_single_well = selection_swms_single_well.squeeze(axis=0)
+        fill_values = metadata_single_well.to_dict()
+        fill_values.update({"naam_meetpunt": well_name_swm})
         header = swm_header_format.format(**fill_values)
 
         data = pd.read_csv(
-            data_dir.joinpath(site, f"{naam_meetpunt}.csv"), parse_dates=["Datum"]
+            data_dir.joinpath(folder_names[site], f"{well_name_swm}.csv"),
+            parse_dates=["Datum"],
         )
         data.columns = ["datumtijd", "slootwaterstand (m NAP)"]
         data["slootwaterstand (m NAP)"] = data["slootwaterstand (m NAP)"] / 100
-        data["datumtijd"] = data["datumtijd"].dt.strftime("%d-%m-%Y")
-
-        # path_out = f'P:/11207812-somers-ontwikkeling/database_grondwater/handmatige_uitvraag_bestanden/NOBV/SWM_{naam_meetpunt}.txt'
-        # with open(path_out, 'w') as fp:
-        #     fp.write(header)
-
-        # data.to_csv(path_out, mode='a', sep=';', index=False, header=False)
-
-# %% regiodeal
-data_dir = Path(
-    r"N:\Projects\11206000\11206020\B. Measurements and calculations\Extensometers\Tijdreeks_analyse\data\2-interim"
-)
-sites = ["Berkenwoude", "Cabauw", "Bleskensgraaf", "Hazerswoude"]
-
-for site in sites:
-    metadata = pd.read_excel(
-        basedir.joinpath("NOBV", "overzicht_nobv_type1.xlsx"), index_col="naam_meetpunt"
-    )
-    metadata_site = metadata[metadata.index.str.contains(site)]
-
-    mask_gwms = (metadata_site["Diver"] == "ja") & (
-        metadata_site["categorie"] == "grondwaterpeil"
-    )
-    selection_gwms = metadata_site[mask_gwms]
-
-    mask_swms = (metadata_site["Diver"] == "ja") & (
-        metadata_site["categorie"] == "slootpeil"
-    )
-    selection_swms = metadata_site[mask_swms]
-
-    for naam_meetpunt, metadata_meetpunt in selection_gwms.iterrows():
-        print(naam_meetpunt)
-        fill_values = metadata_meetpunt.to_dict()
-        new_lines = {
-            "naam_meetpunt": naam_meetpunt,
-            "gefundeerd (ja/nee)": "ja",
-            "greppel aanwezig (ja/nee)": "nee",
-            "drains aanwezig (ja/nee)": "nee",
-            "WIS aanwezig (ja/nee)": fill_ja_nee(metadata_meetpunt["WIS afstand (m)"]),
-            "greppelafstand (m)": np.nan,
-            "greppeldiepte (m-mv)": np.nan,
-            "drainafstand (m)": np.nan,
-            "draindiepte (m-mv)": np.nan,
-        }
-        fill_values.update(new_lines)
-        header = gwm_header_format.format(**fill_values)
-
-        data = pd.read_csv(
-            data_dir.joinpath(f"{naam_meetpunt}.csv"), parse_dates=["tijd"]
-        )
-        data.columns = ["datumtijd", "grondwaterstand (m NAP)"]
         data["datumtijd"] = data["datumtijd"].dt.strftime("%d-%m-%Y %H:%M:%S")
 
-        path_out = f"P:/11207812-somers-ontwikkeling/database_grondwater/handmatige_uitvraag_bestanden/NOBV/GWM_{naam_meetpunt}.txt"
+        path_out = f"p:/11207812-somers-ontwikkeling/3-somers_development/QSOMERS/NOBV/2026/Grondwaterreeksen/SWM_{well_name_swm}.txt"
         with open(path_out, "w") as fp:
             fp.write(header)
 
         data.to_csv(path_out, mode="a", sep=";", index=False, header=False)
 
-    for naam_meetpunt, metadata_meetpunt in selection_swms.iterrows():
-        print(naam_meetpunt)
-        fill_values = metadata_meetpunt.to_dict()
-        fill_values.update({"naam_meetpunt": naam_meetpunt})
-        header = swm_header_format.format(**fill_values)
+end = time.time()
+print(f"Elapsed time: {end - start} seconds.")
 
-        data = pd.read_csv(
-            data_dir.joinpath(f"{naam_meetpunt}.csv"), parse_dates=["tijd"]
-        )
-        data.columns = ["datumtijd", "slootwaterstand (m NAP)"]
-        data["datumtijd"] = data["datumtijd"].dt.strftime("%d-%m-%Y %H:%M:%S")
+# # %% regiodeal
+# # data_dir = Path(
+# #     r"N:\Projects\11206000\11206020\B. Measurements and calculations\Extensometers\Tijdreeks_analyse\data\2-interim"
+# # )
+# # sites = ["Berkenwoude", "Cabauw", "Bleskensgraaf", "Hazerswoude"]
 
-        path_out = f"P:/11207812-somers-ontwikkeling/database_grondwater/handmatige_uitvraag_bestanden/NOBV/SWM_{naam_meetpunt}.txt"
-        with open(path_out, "w") as fp:
-            fp.write(header)
+# # for site in sites:
+# #     metadata = pd.read_excel(
+# #         basedir.joinpath("NOBV", "overzicht_nobv_type1.xlsx"), index_col="naam_meetpunt"
+# #     )
+# #     metadata_site = metadata[metadata.index.str.contains(site)]
 
-        data.to_csv(path_out, mode="a", sep=";", index=False, header=False)
+# #     mask_gwms = (metadata_site["Diver"] == "ja") & (
+# #         metadata_site["categorie"] == "grondwaterpeil"
+# #     )
+# #     selection_gwms = metadata_site[mask_gwms]
+
+# #     mask_swms = (metadata_site["Diver"] == "ja") & (
+# #         metadata_site["categorie"] == "slootpeil"
+# #     )
+# #     selection_swms = metadata_site[mask_swms]
+
+# #     for naam_meetpunt, metadata_meetpunt in selection_gwms.iterrows():
+# #         print(naam_meetpunt)
+# #         fill_values = metadata_meetpunt.to_dict()
+# #         new_lines = {
+# #             "naam_meetpunt": naam_meetpunt,
+# #             "gefundeerd (ja/nee)": "ja",
+# #             "greppel aanwezig (ja/nee)": "nee",
+# #             "drains aanwezig (ja/nee)": "nee",
+# #             "WIS aanwezig (ja/nee)": fill_ja_nee(metadata_meetpunt["WIS afstand (m)"]),
+# #             "greppelafstand (m)": np.nan,
+# #             "greppeldiepte (m-mv)": np.nan,
+# #             "drainafstand (m)": np.nan,
+# #             "draindiepte (m-mv)": np.nan,
+# #         }
+# #         fill_values.update(new_lines)
+# #         header = gwm_header_format.format(**fill_values)
+
+# #         data = pd.read_csv(
+# #             data_dir.joinpath(f"{naam_meetpunt}.csv"), parse_dates=["tijd"]
+# #         )
+# #         data.columns = ["datumtijd", "grondwaterstand (m NAP)"]
+# #         data["datumtijd"] = data["datumtijd"].dt.strftime("%d-%m-%Y %H:%M:%S")
+
+# #         path_out = f"P:/11207812-somers-ontwikkeling/database_grondwater/handmatige_uitvraag_bestanden/NOBV/GWM_{naam_meetpunt}.txt"
+# #         with open(path_out, "w") as fp:
+# #             fp.write(header)
+
+# #         data.to_csv(path_out, mode="a", sep=";", index=False, header=False)
+
+# #     for naam_meetpunt, metadata_meetpunt in selection_swms.iterrows():
+# #         print(naam_meetpunt)
+# #         fill_values = metadata_meetpunt.to_dict()
+# #         fill_values.update({"naam_meetpunt": naam_meetpunt})
+# #         header = swm_header_format.format(**fill_values)
+
+# #         data = pd.read_csv(
+# #             data_dir.joinpath(f"{naam_meetpunt}.csv"), parse_dates=["tijd"]
+# #         )
+# #         data.columns = ["datumtijd", "slootwaterstand (m NAP)"]
+# #         data["datumtijd"] = data["datumtijd"].dt.strftime("%d-%m-%Y %H:%M:%S")
+
+# #         path_out = f"P:/11207812-somers-ontwikkeling/database_grondwater/handmatige_uitvraag_bestanden/NOBV/SWM_{naam_meetpunt}.txt"
+# #         with open(path_out, "w") as fp:
+# #             fp.write(header)
+
+# #         data.to_csv(path_out, mode="a", sep=";", index=False, header=False)
