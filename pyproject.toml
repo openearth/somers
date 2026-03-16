@@ -14,7 +14,8 @@ dependencies = [
     "sqlalchemy~=2.0",
     "owslib",
     "psycopg2-binary",
-    "geoalchemy2"]
+    "geoalchemy2",
+    "openpyxl"]
 description = "QSOMERS"
 name = "somers"
 requires-python = ">= 3.12"
@@ -43,3 +44,4 @@ matplotlib = "*"
 pandas = "*"
 numpy = "*"
 scipy = "*"
+openpyxl = "*"
