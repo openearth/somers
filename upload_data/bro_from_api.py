@@ -31,6 +31,7 @@
 
 # %%
 import os
+import sys
 import pandas as pd
 import requests
 from datetime import datetime, timedelta
@@ -42,8 +43,11 @@ from sqlalchemy import exc, func
 from sqlalchemy.dialects import postgresql
 import hydropandas as hpd
 
+# Add the parent directory to the system path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 # local procedures
-from orm_timeseries_bro import (
+from orm_timeseries.orm_timeseries_bro import (
     Base,
     FileSource,
     Location,
@@ -53,7 +57,7 @@ from orm_timeseries_bro import (
     TimeSeriesValuesAndFlags as tsv,
     Flags,
 )
-from ts_helpers_bro import (
+from ts_helpers.ts_helpers_bro import (
     establishconnection,
     read_config,
     loadfilesource,

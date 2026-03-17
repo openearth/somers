@@ -1,0 +1,49 @@
+name: spatial-website
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  # Web Framework
+  - flask=3
+  - flask-cors
+  - python=3.11
+  
+  # Geospatial Libraries
+  - geopandas
+  - shapely
+  - gdal
+  - rasterio
+  - fiona
+  - pyproj
+  
+  # Database & ORM
+  - sqlalchemy=2
+  - geoalchemy2
+  - psycopg2-binary
+  - alembic
+  
+  # Data Processing
+  - pandas
+  - numpy
+  - scipy
+  
+  # Visualization & Mapping
+  - matplotlib
+  - folium
+  - plotly
+  
+  # HTTP & API
+  - requests
+  - gunicorn
+  
+  # Utilities
+  - dotenv
+  - ipython
+  - jupyter
+  - pytest
+  
+  pip:
+    - geojson
+    - shapely-geojson
+    - python-dateutil
+    - werkzeug

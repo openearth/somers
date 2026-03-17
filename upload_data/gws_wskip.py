@@ -40,6 +40,12 @@ import requests
 from datetime import datetime
 import pandas as pd
 from sqlalchemy import text
+
+# Add the parent directory to the system path
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+
 from orm_timeseries.orm_timeseries import TimeSeriesValuesAndFlags as tsv
 from ts_helpers.ts_helpers import (
     loadfilesource,
