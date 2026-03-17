@@ -39,8 +39,9 @@ import numpy as np
 
 # third party packages
 from sqlalchemy.sql.expression import update
-from sqlalchemy import exc, func
+from sqlalchemy import exc, func, text
 from sqlalchemy.dialects import postgresql
+from sqlalchemy import text
 import hydropandas as hpd
 
 # Add the parent directory to the system path
@@ -77,9 +78,9 @@ from ts_helpers.ts_helpers_bro import (
 # data is stored in PostgreSQL/PostGIS database. A connection string is needed to interact with the database. This is typically stored in
 # a file.
 
-local = False
+local = True
 if local:
-    fc = r"C:\develop\extensometer\localhost_connection.txt"
+    fc = r"C:\develop\somers\configuration_local.txt"
 else:
     fc = r"C:\develop\extensometer\connection_online.txt"
 session, engine = establishconnection(fc)
@@ -101,7 +102,8 @@ def lastgwstage(engine, brolocation, t, pid, fid):
     join bro_timeseries.timeseriesvaluesandflags tsf on tsf.timeserieskey = ts.timeserieskey
     where l.name = '{brolocation}_{t}' and f.filesourcekey = {fid} and p.parameterkey = {pid}
     """
-    ld = engine.execute(strsql).fetchall()
+    with engine.connect() as conn:
+        ld = conn.execute(text(strsql)).fetchall()
     adate = ld[0][0]
     if adate is None:
         strdate = None
@@ -129,82 +131,83 @@ strSql = """select bro_id,number_of_monitoring_tubes from bro_timeseries.groundw
             where veenperceel and removed = 'nee'"""
 
 updatedb = True  # in this case there is already data available, data will be updated record by record
-# set to False if complete reread of the BRO data is necessary
+# set to False if complete reload of the BRO data is necessary
 
-conn = engine.connect()
-res = conn.execute(strSql)
-for i in res:
-    bro_id = i[0]
-    nr_tubes = i[1]
-    for t in range(1, nr_tubes + 1):
-        # determine last date in table
-        lastdate = lastgwstage(engine, bro_id, t, pid, fid)
-        if lastdate is None:
-            lastdate = "2010-01-01"
-        gw_bro = hpd.GroundwaterObs.from_bro(bro_id, tube_nr=t, tmin=lastdate)
-        if len(gw_bro) > 0:
-            print("adding data from BROID", gw_bro.name)
-            lid = location(
-                fc,
-                fid,
-                name=gw_bro.name,
-                x=gw_bro.x,
-                y=gw_bro.y,
-                filterid=int(gw_bro.tube_nr),
-                epsg=28992,
-                shortname=gw_bro.filename,
-                description="",
-                altitude_msl=gw_bro.ground_level,
-                z=gw_bro.tube_top,
-                tubetop=gw_bro.screen_top,
-                tubebot=gw_bro.screen_bottom,
-            )
-
-            sid = sserieskey(fc, pid, lid, fid, "nonequidistant")
-            dfval = gw_bro.copy(deep=True)
-            dfval["timeserieskey"] = sid
-            dfval["flags"] = flagid
-            dfval.rename(columns={"values": "scalarvalue"}, inplace=True)
-            dfval.index.name = "datetime"
-            dfval.reset_index(level=["datetime"], inplace=True)
-            dfval.drop(["qualifier"], axis=1, inplace=True)
-            dfval.dropna(inplace=True)
-            if len(dfval) > 0 and updatedb:
-                for i, r in dfval.iterrows():
-                    date_time_obj = r["datetime"]
-                    vl = r["scalarvalue"]
-                    flagid = r["flags"]
-                    sid = r["timeserieskey"]
-                    anid = (
-                        session.query(tsv)
-                        .filter_by(
-                            timeserieskey=sid, datetime=date_time_obj, scalarvalue=vl
-                        )
-                        .first()
-                    )
-                    if anid == None:
-                        print(
-                            "adding:",
-                            r["datetime"],
-                            r["scalarvalue"],
-                            r["timeserieskey"],
-                            r["flags"],
-                        )
-                        insert = tsv(
-                            timeserieskey=sid,
-                            datetime=date_time_obj,
-                            scalarvalue=vl,
-                            flags=flagid,
-                        )
-                        session.merge(insert)
-                        session.commit()
-            # incase complete redo of the data then updatedb = false
-            elif len(dfval) > 0 and not updatedb:
-                dfval.to_sql(
-                    "timeseriesvaluesandflags",
-                    engine,
-                    if_exists="append",
-                    schema="bro_timeseries",
-                    index=False,
-                    method="multi",
+with engine.connect() as conn:
+    res = conn.execute(text(strSql))
+    for i in res:
+        bro_id = i[0]
+        nr_tubes = i[1]
+        for t in range(1, nr_tubes + 1):
+            # determine last date in table
+            lastdate = lastgwstage(engine, bro_id, t, pid, fid)
+            print(bro_id, t, lastdate)
+            if lastdate is None:
+                lastdate = "2010-01-01"
+            gw_bro = hpd.GroundwaterObs.from_bro(bro_id, tube_nr=t, tmin=lastdate)
+            if len(gw_bro) > 0:
+                print("adding data from BROID", gw_bro.name)
+                lid = location(
+                    fc,
+                    fid,
+                    name=gw_bro.name,
+                    x=gw_bro.x,
+                    y=gw_bro.y,
+                    filterid=int(gw_bro.tube_nr),
+                    epsg="EPSG:28992",
+                    shortname=gw_bro.filename,
+                    description="",
+                    altitude_msl=gw_bro.ground_level,
+                    z=gw_bro.tube_top,
+                    tubetop=gw_bro.screen_top,
+                    tubebot=gw_bro.screen_bottom,
                 )
+
+                sid = sserieskey(fc, pid, lid, fid, "nonequidistant")
+                dfval = gw_bro.copy(deep=True)
+                dfval["timeserieskey"] = sid
+                dfval["flags"] = flagid
+                dfval.rename(columns={"values": "scalarvalue"}, inplace=True)
+                dfval.index.name = "datetime"
+                dfval.reset_index(level=["datetime"], inplace=True)
+                dfval.drop(["qualifier"], axis=1, inplace=True)
+                dfval.dropna(inplace=True)
+                if len(dfval) > 0 and updatedb:
+                    for i, r in dfval.iterrows():
+                        date_time_obj = r["datetime"]
+                        vl = r["scalarvalue"]
+                        flagid = r["flags"]
+                        sid = r["timeserieskey"]
+                        anid = (
+                            session.query(tsv)
+                            .filter_by(
+                                timeserieskey=sid, datetime=date_time_obj, scalarvalue=vl
+                            )
+                            .first()
+                        )
+                        if anid == None:
+                            print(
+                                "adding:",
+                                r["datetime"],
+                                r["scalarvalue"],
+                                r["timeserieskey"],
+                                r["flags"],
+                            )
+                            insert = tsv(
+                                timeserieskey=sid,
+                                datetime=date_time_obj,
+                                scalarvalue=vl,
+                                flags=flagid,
+                            )
+                            session.merge(insert)
+                            session.commit()
+                # in case complete redo of the data then updatedb = false
+                elif len(dfval) > 0 and not updatedb:
+                    dfval.to_sql(
+                        "timeseriesvaluesandflags",
+                        engine,
+                        if_exists="append",
+                        schema="bro_timeseries",
+                        index=False,
+                        method="multi",
+                    )

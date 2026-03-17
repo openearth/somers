@@ -37,7 +37,7 @@ import datetime
 
 # third party modules
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import create_engine, func, update, insert
+from sqlalchemy import create_engine, func, update, insert, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import Boolean, Integer, Float, DateTime, String, Text
 from geoalchemy2 import Geometry
@@ -179,6 +179,12 @@ def location(
     Id of the location
 
     """
+    if isinstance(epsg, str):
+        epsg = epsg.strip()
+        if epsg.lower().startswith("epsg:"):
+            epsg = epsg.split(":", 1)[1]
+        epsg = int(epsg)
+
     # setup connection to database
     if fskey == None:
         print("please give filesourcekey, this is required")
@@ -216,7 +222,9 @@ def location(
                 strsql = "update bro_timeseries.location set geom = st_setsrid(st_point(x,y),epsgcode) where geom is null"
             else:
                 strsql = "update bro_timeseries.location set geom = st_transform(st_setsrid(st_point(x,y),epsgcode),28992) where geom is null"
-            engine.execute(strsql)
+            with engine.connect() as conn:
+                conn.execute(text(strsql))
+                conn.commit()
         else:
             print("name already stored in location table", name, f.locationkey)
         lkey = f.locationkey
