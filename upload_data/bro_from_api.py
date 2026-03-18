@@ -78,11 +78,11 @@ from ts_helpers.ts_helpers_bro import (
 # data is stored in PostgreSQL/PostGIS database. A connection string is needed to interact with the database. This is typically stored in
 # a file.
 
-local = True
+local = False
 if local:
     fc = r"C:\develop\somers\configuration_local.txt"
 else:
-    fc = r"C:\develop\extensometer\connection_online.txt"
+    fc = r"C:\develop\somers\configuration_somers.txt"
 session, engine = establishconnection(fc)
 
 
@@ -144,6 +144,10 @@ with engine.connect() as conn:
             print(bro_id, t, lastdate)
             if lastdate is None:
                 lastdate = "2010-01-01"
+            # by getting lastdata and using that in the request, it is possible to only 
+            # retrieve new data from BRO, which is more efficient than retrieving all 
+            # data and then checking which data is new. So if the request is hindered by anything
+            # it is easy to start all over again, without the need to check which data is already in the database and which not.
             gw_bro = hpd.GroundwaterObs.from_bro(bro_id, tube_nr=t, tmin=lastdate)
             if len(gw_bro) > 0:
                 print("adding data from BROID", gw_bro.name)
@@ -211,3 +215,5 @@ with engine.connect() as conn:
                         index=False,
                         method="multi",
                     )
+
+# %%
