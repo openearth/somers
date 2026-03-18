@@ -6,6 +6,7 @@ dependencies:
   - ipykernel=6
   - owslib
   - pip=24
+  - pyproj
   - psycopg2-binary
   - python=3
   - sqlalchemy=2

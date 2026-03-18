@@ -4,6 +4,10 @@ ALTER TABLE bro_timeseries.timeseriesmanualeditshistory
 DROP CONSTRAINT timeseriesmanualeditshistory_pkey CASCADE,
 ADD PRIMARY KEY (timeserieskey, editdatetime, datetime, scalarvalue);
 
+-- insert a user in the user table
+insert into bro_timeseries.users (userkey,id,name) values (1, 'hendrik_gt','Gerrit Hendriksen')
+
+
 -- copy all data to the timeseriesmanualeditshistory table
 INSERT INTO bro_timeseries.timeseriesmanualeditshistory (timeserieskey, editdatetime, datetime, userkey, scalarvalue, flags, commenttext)
 SELECT timeserieskey, CURRENT_TIMESTAMP, datetime, 1, scalarvalue, flags, 'copy of the data of 2023'

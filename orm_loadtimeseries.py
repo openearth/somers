@@ -47,7 +47,13 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from sqlalchemy import create_engine, text
 
 ## Declare a Mapping to the database
-from orm_timeseries.orm_timeseries_wskip import Base
+from orm_timeseries.orm_timeseries_bro import Base
+# from orm_timeseries.orm_timeseries_delf import Base
+# from orm_timeseries.orm_timeseries_hdsr import Base
+# from orm_timeseries.orm_timeseries_hhnk import Base
+# from orm_timeseries.orm_timeseries_nobv import Base
+# from orm_timeseries.orm_timeseries_waterschappen import Base
+# from orm_timeseries.orm_timeseries_wskip import Base
 
 def checkschema(engine,schema):
     strsql = f"create schema if not exists {schema}"
@@ -95,7 +101,7 @@ if __name__ == "__main__":
     # schemas = ('subsurface_second')
     # for schema in schemas:
     #     checkschema(engine,schema)
-    lschema = ('wskip_timeseries',)
+    lschema = ('bro_timeseries',)
     for schema in lschema:
         checkschema(engine,schema)
     # format is #postgres://user:password@hostname/database (in this case hydrodb)    
