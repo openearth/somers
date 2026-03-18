@@ -9,6 +9,7 @@ Created on Thu Jan  7 14:49:58 2021
 #   --------------------------------------------------------------------
 #   Copyright (C) 2021 Deltares for KINM (KennisImpuls Nutrienten Maatregelen)
 #   Gerrit.Hendriksen@deltares.nl
+#   Kevin Ouwerkerk
 #
 #   This library is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -42,9 +43,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import Boolean, Integer, Float, DateTime, String, Text
 from geoalchemy2 import Geometry
 
-
 ## Declare a Mapping to the database
-from orm_timeseries.orm_timeseries_bro import (
+from orm_timeseries.orm_timeseries_wskip import (
     Base,
     FileSource,
     Location,
@@ -54,7 +54,6 @@ from orm_timeseries.orm_timeseries_bro import (
     TimeStep,
     Flags,
     Transaction,
-    TimeSeriesValuesAndFlags,
 )
 
 
@@ -84,6 +83,27 @@ def establishconnection(fc):
     session = Session()
     session.rollback()
     return session, engine
+
+
+def testconnection(engine):
+    """Tests a connection and if it fails returns False
+
+    Args:
+        engine (sqlalchemy object): engine configuration
+
+    Returns:
+        Boolean: True if a test is succesfull
+    """
+    strsql = "SELECT * FROM pg_settings WHERE name = 'port';"
+    a = True
+    try:
+        with engine.connect() as conn:
+            conn.execute(text(strsql))
+    except Exception:
+        print("database not working")
+        a = False
+    finally:
+        return a
 
 
 def loadfilesource(source, fc, remark="", lasttransactionid=None):
@@ -140,7 +160,6 @@ def location(
     epsg,
     shortname="",
     description="",
-    filterid=None,
     z=0,
     altitude_msl=0,
     diverid=None,
@@ -161,8 +180,6 @@ def location(
         Alternative name for the location.
     description : string
         Description of the location.
-    filterid: integer
-        unique number of the filter
     x : float
         x or long coordinate.
     y : float
@@ -179,12 +196,6 @@ def location(
     Id of the location
 
     """
-    if isinstance(epsg, str):
-        epsg = epsg.strip()
-        if epsg.lower().startswith("epsg:"):
-            epsg = epsg.split(":", 1)[1]
-        epsg = int(epsg)
-
     # setup connection to database
     if fskey == None:
         print("please give filesourcekey, this is required")
@@ -207,7 +218,6 @@ def location(
                 description=description,
                 tubebot=tubebot,
                 tubetop=tubetop,
-                filterid=filterid,
                 x=x,
                 y=y,
                 z=z,
@@ -219,12 +229,11 @@ def location(
             session.add(f)
             session.commit()
             if epsg == 28992:
-                strsql = "update bro_timeseries.location set geom = st_setsrid(st_point(x,y),epsgcode) where geom is null"
+                strsql = "update wskip_timeseries.location set geom = st_setsrid(st_point(x,y),epsgcode) where geom is null"
             else:
-                strsql = "update bro_timeseries.location set geom = st_transform(st_setsrid(st_point(x,y),epsgcode),28992) where geom is null"
-            with engine.connect() as conn:
+                strsql = "update wskip_timeseries.location set geom = st_transform(st_setsrid(st_point(x,y),epsgcode),28992) where geom is null"
+            with engine.begin() as conn:
                 conn.execute(text(strsql))
-                conn.commit()
         else:
             print("name already stored in location table", name, f.locationkey)
         lkey = f.locationkey
@@ -550,16 +559,6 @@ def settransaction(timeserieskey, periodstart, periodend, transactionid, session
     )
     session.add(stmt)
     session.commit()
-
-
-def convertdatetostring(date):
-    """converts datetime object to string
-
-    Args:
-        date (datetime object):
-    """
-    strdate = date.strftime("%y-%m-%d")
-    return strdate
 
 
 def convertlttodate(lt, ddapi=False):

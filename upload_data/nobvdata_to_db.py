@@ -49,6 +49,11 @@ from sqlalchemy import exc, func, ARRAY, Float
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import DOUBLE_PRECISION
 
+# Add the parent directory to the system path
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+
 # local procedures
 from orm_timeseries.orm_timeseries_nobv import (
     Base,

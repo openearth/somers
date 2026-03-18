@@ -42,9 +42,10 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 # Construct the path to the root of the project
 project_root = os.path.abspath(os.path.join(current_dir, '..'))
 
+# Add the parent directory to the system path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 # Add the project root to the PYTHONPATH
 sys.path.append(project_root)
-
 
 # third party packages
 from sqlalchemy.sql.expression import update

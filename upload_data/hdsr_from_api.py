@@ -42,8 +42,13 @@ from sqlalchemy.sql.expression import update
 from sqlalchemy import exc, func
 from sqlalchemy.dialects import postgresql
 
+# Add the parent directory to the system path
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+
 # local procedures
-from orm_timeseries_hdsr import (
+from orm_timeseries.orm_timeseries_hdsr import (
     Base,
     FileSource,
     Location,
@@ -53,7 +58,7 @@ from orm_timeseries_hdsr import (
     TimeSeriesValuesAndFlags,
     Flags,
 )
-from ts_helpers_hdsr import (
+from ts_helpers.ts_helpers_hdsr import (
     establishconnection,
     read_config,
     loadfilesource,

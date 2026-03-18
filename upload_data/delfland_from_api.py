@@ -27,6 +27,7 @@
 
 # %%
 import os
+import sys
 import pandas as pd
 import requests
 from datetime import datetime
@@ -38,8 +39,12 @@ from sqlalchemy.sql.expression import update
 from sqlalchemy import exc, func
 from sqlalchemy.dialects import postgresql
 
+# Add the parent directory to the system path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+
 # local procedures
-from orm_timeseries_delf import (
+from orm_timeseries.orm_timeseries_delf import (
     Base,
     FileSource,
     Location,
@@ -49,7 +54,7 @@ from orm_timeseries_delf import (
     TimeSeriesValuesAndFlags,
     Flags,
 )
-from ts_helpers_delf import (
+from ts_helpers.ts_helpers_delf import (
     establishconnection,
     read_config,
     loadfilesource,

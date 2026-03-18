@@ -11,10 +11,11 @@ PostgreSQL/PostGIS
 
 #  Copyright notice
 #   --------------------------------------------------------------------
-#   Copyright (C) 2021 Deltares for Projects with a FEWS datamodel in 
+#   Copyright (C) 2021, 2026 Deltares for Projects with a FEWS datamodel in 
 #                 PostgreSQL/PostGIS database used in Water Information Systems
+#   2026 update by Gerrit Hendriksen --> update to current way of executing sqls with SQLAlchemy of Python (3.11)
+#
 #   Gerrit Hendriksen@deltares.nl
-#   Kevin Ouwerkerk
 #
 #   This library is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -36,22 +37,26 @@ PostgreSQL/PostGIS
 # Sign up to recieve regular updates of this function, and to contribute
 # your own tools.
 
-## Connect to the DB
+import os
+import sys
 
-from sqlalchemy import create_engine
+# Add the parent directory to the system path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+## Connect to the DB
+from sqlalchemy import create_engine, text
 
 ## Declare a Mapping to the database
-from orm_timeseries.orm_timeseries_waterschappen import Base
+from orm_timeseries.orm_timeseries_wskip import Base
 
 def checkschema(engine,schema):
-    strsql = 'create schema if not exists {s}'.format(s=schema)
-    engine.execute(strsql)
+    strsql = f"create schema if not exists {schema}"
+    with engine.begin() as conn:
+        conn.execute(text(strsql))
 
 def readcredentials(fc):
-    f = open(fc)
-    engine = create_engine(f.read(), echo=False)
-    #engine = create_engine("postgresql+psycopg2://postgres:ghn13227@localhost/nobv")
-    f.close()
+    with open(fc) as f:
+        engine = create_engine(f.read().strip(), echo=False)
     return engine
 
 # function to create the database, bear in mind, only to be executed when first started
@@ -64,25 +69,33 @@ def dropdb(engine):
     Base.metadata.drop_all(engine)
 
 def resetindex(engine,schema):
-    strsql = """SELECT tablename, indexname, indexdef FROM pg_indexes WHERE schemaname = 'waterschappen_timeseries' ORDER BY tablename,indexname;"""
-    lst = engine.execute(strsql)
-    for i in lst:
-        print(i.tablename,i.indexname)
-        strSql = """ALTER SEQUENCE waterschappen_timeseries.{indx} RESTART WITH 1""".format(indx=i.indexname)
-        engine.execute(strSql)
+    strsql = text(
+        """
+        SELECT tablename, indexname, indexdef
+        FROM pg_indexes
+        WHERE schemaname = :schema
+        ORDER BY tablename, indexname
+        """
+    )
+    with engine.begin() as conn:
+        lst = conn.execute(strsql, {"schema": schema})
+        for i in lst:
+            print(i.tablename, i.indexname)
+            strSql = f"ALTER SEQUENCE {schema}.{i.indexname} RESTART WITH 1"
+            conn.execute(text(strSql))
         
 if __name__ == "__main__":
     local = False
     if local:
-        fc = r"C:\projecten\grondwater_monitoring\nobv\2023\connection_local_somers.txt"
+        fc = r"C:\develop\somers\configuration_local.txt"
     else:
-        fc = r"C:\projecten\grondwater_monitoring\nobv\2023\connection_online_qsomers.txt"
+        fc = r"C:\develop\somers\configuration_somers.txt"
     engine = readcredentials(fc)
     #when multiple schemas
     # schemas = ('subsurface_second')
     # for schema in schemas:
     #     checkschema(engine,schema)
-    lschema = ('waterschappen_timeseries',)
+    lschema = ('wskip_timeseries',)
     for schema in lschema:
         checkschema(engine,schema)
     # format is #postgres://user:password@hostname/database (in this case hydrodb)    
