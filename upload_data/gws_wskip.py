@@ -37,7 +37,7 @@ Created on Tue Jul 19 12:05:14 2022
 import datetime
 import os
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 from sqlalchemy import text
 
@@ -46,21 +46,21 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 
-from orm_timeseries.orm_timeseries import TimeSeriesValuesAndFlags as tsv
-from ts_helpers.ts_helpers import (
+from orm_timeseries.orm_timeseries_wskip import TimeSeriesValuesAndFlags as tsv
+from ts_helpers.ts_helpers_wskip import (
     loadfilesource,
     location,
     establishconnection,
     Location,
 )
-from ts_helpers.ts_helpers import sparameter, stimestep, sflag, sserieskey
+from ts_helpers.ts_helpers_wskip import sparameter, stimestep, sflag, sserieskey
 
 # globals
 local = False
 if local:
-    fc = r"C:\develop\extensometer\localhost_connection.txt"
+    fc = r"C:\develop\somers\configuration_local.txt"
 else:
-    fc = r"C:\develop\extensometer\connection_online.txt"
+    fc = r"C:\develop\somers\configuration_somers.txt"
 
 # the connection to the database
 session, engine = establishconnection(fc)
@@ -122,7 +122,7 @@ def procesdata(jsonrespons, fid):
             sid2 = sserieskey(fc, pid2, lid, fid, fm)
             # store timeseries associated with location for tid (the identifier of the telemetrielocationid)
             storetimeseries(sid, tid, flagid, sid2)
-        elif ogw == "j" and dgw == None:
+        elif ogw == "j" and dgw is None:
             pid = sparameter(
                 fc,
                 "ondiepgrondwater",
@@ -133,15 +133,15 @@ def procesdata(jsonrespons, fid):
             sid = sserieskey(fc, pid, lid, fid, fm)
             # store timeseries associated with location for tid (the identifier of the telemetrielocationid)
             storetimeseries(sid, tid, flagid)
-        elif dgw == "j" and ogw == None:
+        elif dgw == "j" and ogw is None:
             pid = sparameter(
                 fc,
                 "diepgrondwater",
                 "diepgrondwater",
                 ("stand", "m-NAP"),
-                "ondiepgrondwater",
+                "diepgrondwater",
             )
-            sid = sserieskey(fc, pid2, lid, fid, fm)
+            sid = sserieskey(fc, pid, lid, fid, fm)
             # store timeseries associated with location for tid (the identifier of the telemetrielocationid)
             storetimeseries(sid, tid, flagid)
 
@@ -164,7 +164,8 @@ def storetimeseries(sid, id, flagid, sid2=None):
     # now for each location retrieve the timeseries data.
     # get a list of shortnames, that is the key
     ts = requests.get(
-        f"""https://gis.wetterskipfryslan.nl/arcgis/rest/services/Grondwatersite_mpn/MapServer/1/query?outFields=*&orderByFields=MONSTERDATUM&f=json&where=TELEMETRIELOCATIEID='{id}'+AND+MONSTERDATUM+>+date+'2010-01-01+00:00:00'+"""
+        f"""https://gis.wetterskipfryslan.nl/arcgis/rest/services/Grondwatersite_mpn/MapServer/1/query?outFields=*&orderByFields=MONSTERDATUM&f=json&where=TELEMETRIELOCATIEID='{id}'+AND+MONSTERDATUM+>+date+'2010-01-01+00:00:00'+""",
+        timeout=60,
     )
     print(id, ts.status_code)
     if ts.status_code == 200:
@@ -172,29 +173,36 @@ def storetimeseries(sid, id, flagid, sid2=None):
         for v in range(len(tsdata["features"])):
             text = "ondiep"
             tid = None
+            current_sid = sid
             if sid2 is not None:
                 tid = tsdata["features"][v]["attributes"]["TELEMETRIEKANAALID"]
                 if tid == "Ai5":
                     dt = tsdata["features"][v]["attributes"]["MONSTERDATUM"]
                     vl = tsdata["features"][v]["attributes"]["WAARDE"]
+                    current_sid = sid
                 elif tid == "Ai6":
                     dt = tsdata["features"][v]["attributes"]["MONSTERDATUM"]
                     vl = tsdata["features"][v]["attributes"]["WAARDE"]
                     text = "diep"
+                    current_sid = sid2
+                else:
+                    continue
             else:
                 dt = tsdata["features"][v]["attributes"]["MONSTERDATUM"]
                 vl = tsdata["features"][v]["attributes"]["WAARDE"]
 
             date_time_obj = timestamp_to_datetime(dt)
-            print(text, id, tid, sid, date_time_obj, vl)
+            print(text, id, tid, current_sid, date_time_obj, vl)
             anid = (
                 session.query(tsv)
-                .filter_by(timeserieskey=sid, datetime=date_time_obj, scalarvalue=vl)
+                .filter_by(
+                    timeserieskey=current_sid, datetime=date_time_obj, scalarvalue=vl
+                )
                 .first()
             )
-            if anid == None:
+            if anid is None:
                 insert = tsv(
-                    timeserieskey=sid,
+                    timeserieskey=current_sid,
                     datetime=date_time_obj,
                     scalarvalue=vl,
                     flags=flagid,
@@ -211,15 +219,21 @@ def lastgwstage(engine, gwslocation, t, pid, fid):
         pid (integer): parameterkey
         fid (integer): filesourckey
     """
-    strsql = f"""
+    strsql = text(
+        """
     select max(datetime) from wskip_timeseries.location l
     join wskip_timeseries.timeseries ts on ts.locationkey = l.locationkey
     join wskip_timeseries.parameter p on p.parameterkey = ts.parameterkey
     join wskip_timeseries.filesource f on f.filesourcekey = ts.filesourcekey
     join wskip_timeseries.timeseriesvaluesandflags tsf on tsf.timeserieskey = ts.timeserieskey
-    where l.name = '{gwslocation}_{t}' and f.filesourcekey = {fid} and p.parameterkey = {pid}
+    where l.name = :location_name and f.filesourcekey = :fid and p.parameterkey = :pid
     """
-    ld = engine.execute(strsql).fetchall()
+    )
+    with engine.connect() as conn:
+        ld = conn.execute(
+            strsql,
+            {"location_name": f"{gwslocation}_{t}", "fid": fid, "pid": pid},
+        ).fetchall()
     adate = ld[0][0]
     if adate is None:
         strdate = None
@@ -246,6 +260,7 @@ def timestamp_to_datetime(timestamp):
 # the website mentions the elevation (m-mv) where the observations are done, these observations
 # are retrieved from https://www.wetterskipfryslan.nl/kaarten/grondwaterstanden. Every location reveals
 # this elevation. In some cases there are shallow and deep measurements, shallow is the first number in de list of values, deep the last)
+# in 2026 an update is done, but some names changed, like DM-07-NO which used to be Sweagermieden (DM-07-NO). For now, the names in the website are used, but in the future this should be updated to the new names. The elevation is stored in the location table as tubetop, and can be used to check if the data is correct. In some cases there are 2 values, for shallow and deep groundwater, in that case the shallow value is stored as tubetop, and the deep value is stored as a remark in the location table.
 def update_md():
     tubetop = {}
     tubetop["Skrins"] = 1.5
@@ -253,20 +268,31 @@ def update_md():
     tubetop["Oosterbierum"] = (2, 7)
     tubetop["Sterneplak"] = (2, 7)
     tubetop["Oosterbierum (DM-10-NW)"] = (3, 6.5)
+    tubetop["DM-10-NW"] = (3, 6.5)
     tubetop["Gaasterland – Rijsterpolder (DM-09-ZW)"] = (4, 15)
+    tubetop["DM-09-ZW"] = (4, 15)
     tubetop["Kleine Wielen"] = 2
     tubetop["Echtenerveenpolder"] = 2
     tubetop["De Stripe - Wijnjewoude (DM-01-ZO)"] = 5
+    tubetop["DM-01-ZO"] = 5
     tubetop["Wijnjeterperschar"] = 1
     tubetop["Fochteloo"] = 2.5
     tubetop["Duurswouderheide (DM-02-ZO)"] = 1.5
+    tubetop["DM-02-ZO"] = 1.5
     tubetop["Sweagermieden (DM-07-NO)"] = 2
+    tubetop["DM-07-NO"] = 2
     tubetop["Lauwersmeer Kollumerwaard (DM-08-NO)"] = 1
+    tubetop["DM-08-NO"] = 1
     tubetop["Oldetrijne – De Meenthe"] = (None, None)
     tubetop["Hempensermeerpolder (DM-06-ZW)"] = 1.5
+    tubetop["DM-06-ZW"] = 1.5
     tubetop["Reahelstermieden (DM-04-NO)"] = 1.5
+    tubetop["DM-04-NO"] = 1.5
     tubetop["Kop van Bloksloot (DM-05-ZW)"] = 1
+    tubetop["DM-05-ZW"] = 1
     tubetop["Drents Friese Wold (DM-03-ZO)"] = 2.5
+    tubetop["DM-03-ZO"] = 2.5
+    tubetop["Fochteloo"] = 2.5
 
     # in case 2 values are mentioned.... the difference between shallow, deep data is the parameterkey
     # 1 for shallow, 2 for deep groundwater. In case of 2, this will be ignored, for now!
@@ -278,7 +304,9 @@ def update_md():
         strsql = text(
             """update wskip_timeseries.location set tubetop = :shtt where name = :tb"""
         )
-        engine.execute(strsql, {"shtt": shtt, "tb": tb})
+        with engine.connect() as conn:
+            conn.execute(strsql, {"shtt": shtt, "tb": tb})
+            conn.commit()
 
 
 if __name__ == "__main__":
@@ -297,9 +325,10 @@ if __name__ == "__main__":
 
     for alink in lstlnks:
         print(alink)
-        response = requests.get(alink)
+        response = requests.get(alink, timeout=60, verify=False)
         if response.status_code == 200:
             data = response.json()
+
             # store link as filesource
             fid = loadfilesource(alink, fc, remark="online resource")[0][0]
             # procesgeom loads/checks geometry, parameter, and stores all data
