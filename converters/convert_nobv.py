@@ -21,6 +21,7 @@ LOCATION_FULLNAMES_NOBV = {
     "ROV": "Rouveen",
     "VLI": "Vlist",
     "ZEG": "Zegveld",
+    "LYD": "Lytse Deelen",
 }
 
 gwm_header_format = (
@@ -34,7 +35,7 @@ gwm_header_format = (
     "# slootafstand (m): {slootafstand (m)}\n"
     "# zomer streefpeil (m NAP): {zomer streefpeil (m NAP)}\n"
     "# winter streefpeil (m NAP): {winter streefpeil (m NAP)}\n"
-    "# greppel aanwezig (ja/nee): {greppel aanwezig (ja/nee)}\n"
+    "# greppel aanwezig (ja/nee): {Greppel aanwezig}\n"
     "# drains aanwezig (ja/nee): {drains aanwezig (ja/nee)}\n"
     "# WIS aanwezig (ja/nee): {WIS aanwezig (ja/nee)}\n"
     "# greppelafstand (m): {greppelafstand (m)}\n"
@@ -62,9 +63,16 @@ basedir = Path(r"p:/11207812-somers-ontwikkeling/3-somers_development/QSOMERS")
 data_dir = Path(
     r"p:/broeikasgassen-veenweiden/Grondwater/grondwaterstandanalyse/data/4-output/Gecorrigeerde_grondwaterstanden_hourly/gecorrigeerd"
 )
-sites = ["ASD", "ROV", "VLI", "ALB", "ZEG"]
+sites = ["ASD", "ROV", "VLI", "ALB", "ZEG", "LYD"]
 
-folder_names = {"ASD": "ASD", "ROV": "ROU", "VLI": "VLI", "ALB": "ALB", "ZEG": "ZEG"}
+folder_names = {
+    "ASD": "ASD",
+    "ROV": "ROU",
+    "VLI": "VLI",
+    "ALB": "ALB",
+    "ZEG": "ZEG",
+    "LYD": "LYD",
+}
 
 metadata = pd.read_excel(
     basedir.joinpath("NOBV", "2026", "overzicht_nobv_2026.xlsx"),
@@ -84,9 +92,11 @@ mask_swms = (metadata_nobv["Diver"] == "ja") & (
     metadata_nobv["categorie"] == "slootpeil"
 )
 selection_swms = metadata_nobv[mask_swms]
-selection_swms.drop(
-    "ZEG_OP_13_10", inplace=True
-)  # drop ZEG_OP_13_10 from the list of measurements
+
+if "ZEG_OP_13_10" in selection_swms.index:
+    selection_swms.drop(
+        "ZEG_OP_13_10", inplace=True
+    )  # drop ZEG_OP_13_10 from the list of measurements
 
 for site in sites:
 
@@ -105,6 +115,8 @@ for site in sites:
     well_names_gwm = metadata_site_gwms.index.tolist()
 
     for well_name_gwm in well_names_gwm:
+
+        print(f"Analyzing {well_name_gwm}")
         selection_gwms_single_well = metadata_site_gwms[
             metadata_site_gwms.index == well_name_gwm
         ]
@@ -112,10 +124,15 @@ for site in sites:
         metadata_single_well = selection_gwms_single_well.squeeze(axis=0)
 
         fill_values = metadata_single_well.to_dict()
+        if "FI" in well_name_gwm:
+            greppel_aanwezig = "ja"
+        else:
+            greppel_aanwezig = "nee"
+
         new_lines = {
             "naam_meetpunt": well_name_gwm,
             "gefundeerd (ja/nee)": "ja",
-            "greppel aanwezig (ja/nee)": "nee",
+            # "greppel aanwezig (ja/nee)": "nee",
             "drains aanwezig (ja/nee)": "nee",
             "WIS aanwezig (ja/nee)": fill_ja_nee(
                 metadata_single_well["WIS afstand (m)"]
@@ -150,6 +167,9 @@ for site in sites:
     well_names_swm = metadata_site_swms.index.tolist()
 
     for well_name_swm in well_names_swm:
+
+        print(f"Analyzing {well_name_swm}")
+
         selection_swms_single_well = metadata_site_swms[
             metadata_site_swms.index == well_name_swm
         ]
