@@ -74,10 +74,10 @@ strsql = f"""
 UPDATE bro_timeseries.groundwater_monitoring_well
 SET veenperceel = EXISTS (
     SELECT 1
-    FROM public.input_parcels_2022
+    FROM public.b_2024_ahn3
     WHERE ST_Intersects(
         ST_Transform(bro_timeseries.groundwater_monitoring_well.geometry, 28992),
-        public.input_parcels_2022.geom)
+        public.b_2024_ahn3.geom)
 );"""
 with engine.begin() as conn:
     conn.execute(text(strsql))
