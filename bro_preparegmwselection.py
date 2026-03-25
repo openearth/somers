@@ -69,7 +69,7 @@ ALTER TABLE {schema}.{tblname}
 with engine.begin() as conn:
     conn.execute(text(strsql))
 
-
+# add indication of whether the groundwater monitoring well is located in a veenperceel, by checking if it intersects with a veenperceel in the input_parcels_2022 table
 strsql = f"""
 UPDATE bro_timeseries.groundwater_monitoring_well
 SET veenperceel = EXISTS (
@@ -83,44 +83,60 @@ with engine.begin() as conn:
     conn.execute(text(strsql))
 
 # update groundwater_monitoring_well with distance to railways
-strsql = f"""
-UPDATE bro_timeseries.groundwater_monitoring_well
-SET rr_dist_m = (
-    SELECT MIN(ST_Distance(
-        ST_Transform(bro_timeseries.groundwater_monitoring_well.geometry, 28992),
-        top10.top10nl_spooras.geom
-    ))
-    FROM top10.top10nl_spooras
-    WHERE veenperceel
-);
-"""
+# first set all distances to null, then calculate distance to railways, roads and ditches
+strsql = """UPDATE bro_timeseries.groundwater_monitoring_well set rr_dist_m = Null"""
+with engine.begin() as conn:
+    conn.execute(text(strsql))      
+
+strsql = """UPDATE bro_timeseries.groundwater_monitoring_well AS pt
+  SET  rr_dist_m = (
+    SELECT ST_Distance(st_transform(pt.geometry,28992), ln.geom)
+    FROM   top10.top10nl_spooras AS ln
+    ORDER BY
+           st_transform(pt.geometry,28992) <-> ln.geom
+    LIMIT  1
+  )
+  where veenperceel
+;""""
+
+with engine.begin() as conn:
+    conn.execute(text(strsql))      
+
+# first set all distances to null, then calculate distance to roads, railways and ditches
+"""UPDATE bro_timeseries.groundwater_monitoring_well set wl_dist_m = Null;"""
+with engine.begin() as conn:
+    conn.execute(text(strsql))  
+
+# calculate distance to ditches
+strsql = """UPDATE bro_timeseries.groundwater_monitoring_well AS pt
+  SET  wl_dist_m = (
+    SELECT ST_Distance(st_transform(pt.geometry,28992), ln.geom)
+    FROM   top10.top10nl_waterdeel_lijn AS ln
+    ORDER BY
+           st_transform(pt.geometry,28992) <-> ln.geom
+    LIMIT  1
+  )
+  where veenperceel
+;"""
 with engine.begin() as conn:
     conn.execute(text(strsql))
 
-# update groundwater_monitoring_well with distance to ditches
-strsql = f"""
-UPDATE bro_timeseries.groundwater_monitoring_well
-SET wl_dist_m = (
-    SELECT MIN(ST_Distance(
-        ST_Transform(bro_timeseries.groundwater_monitoring_well.geometry, 28992),
-        top10.top10nl_waterdeel_lijn.geom))
-    FROM top10.top10nl_waterdeel_lijn
-    WHERE veenperceel
-);
-"""
+# first set all distances to null, then calculate distance to roads, railways and ditches
+strsql = """UPDATE bro_timeseries.groundwater_monitoring_well set rd_dist_m = Null"""
 with engine.begin() as conn:
-    conn.execute(text(strsql))    
+    conn.execute(text(strsql))      
 
-# update groundwater_monitoring_well with distance to roads
-strsql = f"""
-UPDATE bro_timeseries.groundwater_monitoring_well
-SET wl_dist_m = (
-    SELECT MIN(ST_Distance(
-        ST_Transform(bro_timeseries.groundwater_monitoring_well.geometry, 28992),
-        top10.top10nl_wegdeel_hartlijn.geom))
-    FROM top10.top10nl_wegdeel_hartlijn
-    WHERE veenperceel
-);
-"""
+# calculate distance to roads
+strsql = """UPDATE bro_timeseries.groundwater_monitoring_well AS pt
+  SET  rd_dist_m = (
+    SELECT ST_Distance(st_transform(pt.geometry,28992), ln.geom)
+    FROM   top10.top10nl_wegdeel_hartlijn AS ln
+    ORDER BY
+           st_transform(pt.geometry,28992) <-> ln.geom
+    LIMIT  1
+  )
+  where veenperceel
+;"""
+ 
 with engine.begin() as conn:
-    conn.execute(text(strsql))    
+    conn.execute(text(strsql))  
