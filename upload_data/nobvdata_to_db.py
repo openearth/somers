@@ -45,7 +45,7 @@ import matplotlib.pyplot as plt
 
 # third party packages
 from sqlalchemy.sql.expression import update
-from sqlalchemy import exc, func, ARRAY, Float
+from sqlalchemy import exc, func, ARRAY, Float, text
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import DOUBLE_PRECISION
 
@@ -95,8 +95,9 @@ def latest_entry(skey):
         where timeserieskey={s};""".format(
         s=skey
     )
-    r = engine.execute(stmt).fetchall()[0][0]
-    r = pd.to_datetime(r)
+    with engine.connect() as conn:
+        r = conn.execute(text(stmt)).fetchall()[0][0]
+        r = pd.to_datetime(r)
     return r
 
 
@@ -183,7 +184,8 @@ def extract_info_from_text_file(filename):
 def find_locationkey():
     # find the max locationkey which is currently stored in the database
     stmt = """select max(locationkey) from nobv_timeseries.location;"""
-    r = engine.execute(stmt).fetchall()[0][0]
+    with engine.connect() as conn:
+        r = conn.execute(text(stmt)).fetchall()[0][0]
     return r
 
 
@@ -194,7 +196,8 @@ def find_if_stored(name):
         where name = '{n}';""".format(
             n=name
         )
-        r = engine.execute(stmt).fetchall()[0][0]
+        with engine.connect() as conn:
+            r = conn.execute(text(stmt)).fetchall()[0][0]
         return r, True  # mean yes / True it is stored
     except:
         return False
@@ -205,13 +208,15 @@ def find_if_stored(name):
 # set reference to config file
 local = False
 if local:
-    fc = r"C:\projecten\grondwater_monitoring\nobv\2023\connection_local_somers.txt"
+    # fc = r"C:\develop\somers\configuration_local.txt"
+    fc = r'C:\projecten\groundwater\config_local_qsomers.txt'
 else:
-    fc = r"C:\projecten\grondwater_monitoring\nobv\2023\connection_online_qsomers.txt"
+    # fc = r"C:\develop\somers\configuration_somers.txt"
+    fc = r'C:\projecten\groundwater\config_online_qsomers.txt'
 session, engine = establishconnection(fc)
 
-root = r"P:\11207812-somers-ontwikkeling\database_grondwater\handmatige_uitvraag_bestanden\NOBV"
-
+root = r"p:\11207812-somers-ontwikkeling\3-somers_development\QSOMERS\NOBV\2026\Grondwaterreeksen"
+print('jere')
 # assigning parameters, either grondwaterstand or slootwaterpeil
 # zoetwaterstijghoogtes
 pkeygwm = sparameter(
@@ -300,7 +305,8 @@ for root, subdirs, files in os.walk(root):
                     stmt = """update {s}.{t} set geom = st_setsrid(st_point(x,y),epsgcode) where geom is null;""".format(
                         s="nobv_timeseries", t="location"
                     )
-                    engine.execute(stmt)
+                    with engine.connect() as conn:
+                        conn.execute(text(stmt))
 
                     skeyz = sserieskey(
                         fc, pkeyswm, locationkey, fskey[0], timestep="nonequidistant"
@@ -370,7 +376,8 @@ for root, subdirs, files in os.walk(root):
                     stmt = """update {s}.{t} set geom = st_setsrid(st_point(x,y),epsgcode) where geom is null;""".format(
                         s="nobv_timeseries", t="location"
                     )
-                    engine.execute(stmt)
+                    with engine.connect() as conn:
+                        conn.execute(text(stmt))
 
                     metadata = df[cols_metatable]
 
