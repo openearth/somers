@@ -32,6 +32,7 @@
 # %%
 import os
 import sys
+import re
 import pandas as pd
 import requests
 from datetime import datetime, timedelta
@@ -86,6 +87,20 @@ else:
 session, engine = establishconnection(fc)
 
 
+def normalize_gmw_id(raw_id):
+    """Extract normalized GMW id from database identifier fields.
+
+    Accepts values like 'GMW000000000001' or strings that contain this id
+    (for example local ids with namespace prefixes).
+    """
+    if raw_id is None:
+        return None
+    match = re.search(r"(GMW\d{12})", str(raw_id).upper())
+    if match:
+        return match.group(1)
+    return None
+
+
 def lastgwstage(engine, brolocation, t, pid, fid):
     """Retrieves last entrance in the database for the given combination of BROid, filesourckey and paramaterkey
 
@@ -126,19 +141,32 @@ pid = sparameter(fc, "grondwater", "grondwater", ("stand", "m-NAP"), "grondwater
 # - veenparcel = True
 # - removode = 'nee'
 # With this priority list, data will be retrieved from BRO and loaded into the database.
-
-strSql = """select bro_id,number_of_monitoring_tubes from bro_timeseries.groundwater_monitoring_well 
+# in version 2026, the number of tubes is not available in the database, and the bro_id is ... similar to gml_id.
+version = 2026
+if version != 2026:
+    strSql = """select bro_id,number_of_monitoring_tubes from bro_timeseries.groundwater_monitoring_well 
             where veenperceel and removed = 'nee'"""
-
+else:   
+    strSql = """select localid as bro_identifier from bro_timeseries.groundwater_monitoring_well 
+            where veenperceel"""
+    strSql = """select localid as bro_identifier from bro_timeseries.groundwater_monitoring_well 
+            where veenperceel and localid not in (select replace(name, '_', '_00') from bro_timeseries.location)"""
 updatedb = True  # in this case there is already data available, data will be updated record by record
 # set to False if complete reload of the BRO data is necessary
 
 with engine.connect() as conn:
     res = conn.execute(text(strSql))
     for i in res:
-        bro_id = i[0]
-        nr_tubes = i[1]
-        for t in range(1, nr_tubes + 1):
+        raw_bro_id = i[0]
+        bro_id = normalize_gmw_id(raw_bro_id)
+        if bro_id is None:
+            print(f"Skipping unsupported BRO id format: {raw_bro_id}")
+            continue
+        nr_tubes = 1
+        # bro_id = i[0]
+        # nr_tubes = i[1]
+        for t in range(1, nr_tubes + 1): # a bit unnecessary, but in the future there may be more tubes per location, so this is a preparation for that
+            
             # determine last date in table
             lastdate = lastgwstage(engine, bro_id, t, pid, fid)
             print(bro_id, t, lastdate)
@@ -148,8 +176,17 @@ with engine.connect() as conn:
             # retrieve new data from BRO, which is more efficient than retrieving all 
             # data and then checking which data is new. So if the request is hindered by anything
             # it is easy to start all over again, without the need to check which data is already in the database and which not.
-            gw_bro = hpd.GroundwaterObs.from_bro(bro_id, tube_nr=t, tmin=lastdate)
-            if len(gw_bro) > 0:
+            try:
+                gw_bro = hpd.GroundwaterObs.from_bro(bro_id, 1, tmin=lastdate)
+                descr = gw_bro.describe()
+                cnt = descr["values"]["count"]
+                if cnt == 0:
+                    print(f"No new data for {bro_id} (source value: {raw_bro_id}) since {lastdate}")
+                    continue
+            except Exception as e:
+                print(f"BRO download failed for {bro_id} (source value: {raw_bro_id}): {e}")
+                continue
+            if cnt > 0:
                 print("adding data from BROID", gw_bro.name)
                 lid = location(
                     fc,
