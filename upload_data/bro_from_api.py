@@ -101,7 +101,7 @@ def normalize_gmw_id(raw_id):
     return None
 
 
-def lastgwstage(engine, bro_id, pid, fid):
+def lastgwstage(engine, bro_id, t, pid, fid):
     """Retrieves last entrance in the database for the given combination of BROid, filesourckey and paramaterkey
 
     Args:
@@ -115,7 +115,7 @@ def lastgwstage(engine, bro_id, pid, fid):
     join bro_timeseries.parameter p on p.parameterkey = ts.parameterkey
     join bro_timeseries.filesource f on f.filesourcekey = ts.filesourcekey
     join bro_timeseries.timeseriesvaluesandflags tsf on tsf.timeserieskey = ts.timeserieskey
-    where l.name = '{bro_id}' and f.filesourcekey = {fid} and p.parameterkey = {pid}
+    where l.name = '{bro_id}_{t}' and f.filesourcekey = {fid} and p.parameterkey = {pid}
     """
     with engine.connect() as conn:
         ld = conn.execute(text(strsql)).fetchall()
@@ -160,26 +160,22 @@ with engine.connect() as conn:
         if raw_bro_id is None:
             print(f"Skipping unsupported BRO id format: {raw_bro_id}")
             continue
-       
+        
         raw_bro_id = i[0]
         bro_id = raw_bro_id.split('_')[0]
-        t = raw_bro_id.split('_')[1]
-        if int(t) < 10:
-            t = t.strip("00")
-        else:            
-            t = t.strip("0")
-
+        t = int(raw_bro_id.split('_')[1])
+        
         # determine last date in table
-        lastdate = lastgwstage(engine, raw_bro_id, pid, fid)
+        lastdate = lastgwstage(engine, bro_id, t, pid, fid)
         print(bro_id, t, lastdate)
         if lastdate is None:
-            lastdate = "2026-01-01"
+            lastdate = "2010-01-01"
         # by getting lastdata and using that in the request, it is possible to only 
         # retrieve new data from BRO, which is more efficient than retrieving all 
         # data and then checking which data is new. So if the request is hindered by anything
         # it is easy to start all over again, without the need to check which data is already in the database and which not.
         try:
-            gw_bro = hpd.GroundwaterObs.from_bro(bro_id, int(t), tmin=lastdate)
+            gw_bro = hpd.GroundwaterObs.from_bro(bro_id, t, tmin=lastdate)
             descr = gw_bro.describe()
             cnt = descr["values"]["count"]
             if cnt == 0:
@@ -189,7 +185,7 @@ with engine.connect() as conn:
             print(f"BRO download failed for {bro_id} (source value: {raw_bro_id}): {e}")
             continue
         if cnt > 0:
-            print("adding data from BROID", gw_bro.name)
+            print(f"adding {cnt} values for BROID {gw_bro.name}")
             lid = location(
                 fc,
                 fid,
@@ -229,13 +225,13 @@ with engine.connect() as conn:
                         .first()
                     )
                     if anid == None:
-                        print(
-                            "adding:",
-                            r["datetime"],
-                            r["scalarvalue"],
-                            r["timeserieskey"],
-                            r["flags"],
-                        )
+                        # print(
+                        #     "adding:",
+                        #     r["datetime"],
+                        #     r["scalarvalue"],
+                        #     r["timeserieskey"],
+                        #     r["flags"],
+                        # )
                         insert = tsv(
                             timeserieskey=sid,
                             datetime=date_time_obj,
