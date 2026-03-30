@@ -216,7 +216,6 @@ else:
 session, engine = establishconnection(fc)
 
 root = r"p:\11207812-somers-ontwikkeling\3-somers_development\QSOMERS\NOBV\2026\Grondwaterreeksen"
-print('jere')
 # assigning parameters, either grondwaterstand or slootwaterpeil
 # zoetwaterstijghoogtes
 pkeygwm = sparameter(
@@ -230,7 +229,6 @@ tstkeye = stimestep(session, "nonequidistant", "")
 # %%
 flagkeygwm = sflag(fc, "Grondwatermeetpuntt-ruwe data", "Grondwatermeetpunt-ruwe data")
 flagkeyswm = sflag(fc, "Slootwatermeetpunt-ruwe data", "Slootwatermeetpunt-ruwe data")
-
 # %%
 # Example usage:
 cols_loctable = [
@@ -305,7 +303,7 @@ for root, subdirs, files in os.walk(root):
                     stmt = """update {s}.{t} set geom = st_setsrid(st_point(x,y),epsgcode) where geom is null;""".format(
                         s="nobv_timeseries", t="location"
                     )
-                    with engine.connect() as conn:
+                    with engine.begin() as conn:
                         conn.execute(text(stmt))
 
                     skeyz = sserieskey(
@@ -376,7 +374,7 @@ for root, subdirs, files in os.walk(root):
                     stmt = """update {s}.{t} set geom = st_setsrid(st_point(x,y),epsgcode) where geom is null;""".format(
                         s="nobv_timeseries", t="location"
                     )
-                    with engine.connect() as conn:
+                    with engine.begin() as conn:
                         conn.execute(text(stmt))
 
                     metadata = df[cols_metatable]
@@ -444,7 +442,7 @@ for root, subdirs, files in os.walk(root):
                             dfx["datetime"], format="%d-%m-%Y %H:%M:%S"
                         )
                     dfx = dfx.dropna()
-                    print(dfx)
+                    # print(dfx)
 
                     r = latest_entry(skeyz)
 

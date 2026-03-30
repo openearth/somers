@@ -35,7 +35,7 @@ import configparser
 
 # third party packages
 from sqlalchemy.sql.expression import update
-from sqlalchemy import exc, func
+from sqlalchemy import exc, func, text
 from sqlalchemy.dialects import postgresql
 
 # Add the parent directory to the system path
@@ -98,17 +98,17 @@ session, engine = establishconnection(fc)
 
 
 # Functions
-# function to find latest entry
 def latest_entry(skey):
     """function to find the lastest timestep entry per skey.
     input = skey
     output = pandas df containing either none or a date"""
-    stmt = """select max(datetime) from hhnk_timeseries.timeseriesvaluesandflags
+    stmt = """select max(datetime) from nobv_timeseries.timeseriesvaluesandflags
         where timeserieskey={s};""".format(
         s=skey
     )
-    r = engine.execute(stmt).fetchall()[0][0]
-    r = pd.to_datetime(r)
+    with engine.connect() as conn:
+        r = conn.execute(text(stmt)).fetchall()[0][0]
+        r = pd.to_datetime(r)
     return r
 
 
