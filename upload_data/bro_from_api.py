@@ -148,7 +148,8 @@ if version != 2026:
             where veenperceel and removed = 'nee'"""
 else:   
     strSql = """select localid as bro_identifier from bro_timeseries.groundwater_monitoring_well 
-            where veenperceel and localid not in (select name from bro_timeseries.location)"""
+            where veenperceel 
+            and localid not in (select replace(name,'_','_00') from bro_timeseries.location)"""
 updatedb = True  # in this case there is already data available, data will be updated record by record
 # set to False if complete reload of the BRO data is necessary
 
@@ -251,4 +252,8 @@ with engine.connect() as conn:
                     method="multi",
                 )
 
+# %%
+strsql = 'reassign owned by hendrik_gt to qsomers'
+with engine.connect() as conn:
+    conn.execute(text(strsql))
 # %%
