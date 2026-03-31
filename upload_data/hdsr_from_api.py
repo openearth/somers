@@ -39,7 +39,7 @@ import configparser
 
 # third party packages
 from sqlalchemy.sql.expression import update
-from sqlalchemy import exc, func
+from sqlalchemy import exc, func, text
 from sqlalchemy.dialects import postgresql
 
 # Add the parent directory to the system path
@@ -72,7 +72,7 @@ from ts_helpers.ts_helpers_hdsr import (
 )
 
 # ------temp paths/things for testing
-path_csv = r"C:\projecten\nobv\2023\code"
+# path_csv = r"C:\projecten\nobv\2023\code"
 # -------
 
 # %%
@@ -80,11 +80,13 @@ path_csv = r"C:\projecten\nobv\2023\code"
 # data is stored in PostgreSQL/PostGIS database. A connection string is needed to interact with the database. This is typically stored in
 # a file.
 
-local = False
+local = True
 if local:
-    fc = r"C:\projecten\grondwater_monitoring\nobv\2023\connection_local_somers.txt"
+    # fc = r"C:\develop\somers\configuration_local.txt"
+    fc = r'C:\projecten\groundwater\config_local_qsomers.txt'
 else:
-    fc = r"C:\projecten\grondwater_monitoring\nobv\2023\connection_online_qsomers.txt"
+    # fc = r"C:\develop\somers\configuration_somers.txt"
+    fc = r'C:\projecten\groundwater\config_online_qsomers.txt'
 session, engine = establishconnection(fc)
 
 
@@ -94,16 +96,17 @@ def latest_entry(skey):
     """function to find the lastest timestep entry per skey.
     input = skey
     output = pandas df containing either none or a date"""
-    stmt = """select max(datetime) from hdsr_timeseries.timeseriesvaluesandflags
+    stmt = """select max(datetime) from nobv_timeseries.timeseriesvaluesandflags
         where timeserieskey={s};""".format(
         s=skey
     )
-    r = engine.execute(stmt).fetchall()[0][0]
-    r = pd.to_datetime(r)
+    with engine.connect() as conn:
+        r = conn.execute(text(stmt)).fetchall()[0][0]
+        r = pd.to_datetime(r)
     return r
 
 
-configfile = r"C:\projecten\grondwater_monitoring\nobv\2023\apikey\hdsr_confiig.txt"
+configfile = r"C:\projecten\groundwater\hsdr_api.txt"
 cf = configparser.ConfigParser()
 cf.read(configfile)
 
@@ -141,6 +144,7 @@ while response["next"]:
         ]:  # looks if key 'filters'is filled, if not, it skips the entry
             for j in range(len(response["results"][i].get("filters"))):
                 fskey = loadfilesource(response["results"][i]["url"], fc)
+                location
 
                 locationkey = location(
                     fc=fc,
@@ -148,12 +152,19 @@ while response["next"]:
                     name=response["results"][i]["filters"][j]["code"],
                     x=geom["coordinates"][0],
                     y=geom["coordinates"][1],
+                    geom = geom,
                     epsg=4326,
                     description=response["results"][i]["station_type"],
                     altitude_msl=response["results"][i]["filters"][j]["top_level"],
                     tubetop=response["results"][i]["filters"][j]["filter_top_level"],
                     tubebot=response["results"][i]["filters"][j]["filter_bottom_level"],
                 )
+
+                # stmt = """update {s}.{t} set geom = st_setsrid(st_point(x,y),epsgcode) where geom is null;""".format(
+                #         s="hdsr_timeseries", t="location"
+                #     )
+                # with engine.begin() as conn:
+                #     conn.execute(text(stmt))
 
                 # here there is a call to find out if there is a timeseries entry is in the filter column
                 if response["results"][i]["filters"][j][
@@ -211,7 +222,7 @@ while response["next"]:
 
                                     df = pd.DataFrame.from_dict(t["results"])
                                     df = df[df.flag == 0]
-                                    print(df.flag.size)
+                                    # print(df.flag.size)
                                     if df.flag.size > 0:
                                         flagkey = sflag(
                                             fc, str(df.flag.values[0]), "FEWS-flag"

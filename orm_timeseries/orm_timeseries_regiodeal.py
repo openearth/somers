@@ -40,7 +40,7 @@ from sqlalchemy  import Integer, Float, DateTime, String, Text
 from geoalchemy2 import Geometry
 from sqlalchemy.dialects import postgresql
 
-Base = declarative_base() #will be deprecated soon
+Base = declarative_base()
 
 """
 FEWS data model has been partially adopted. Due to completion of the datamodel with borehole datamodel the timeseries datamodel is split in 
@@ -50,70 +50,70 @@ several parts. A common part of the datamodel (location, filesource, parameter a
 
 class TimeStep(Base):
     __tablename__  = 'timesteps'
-    __table_args__ = {'schema': 'nobv_timeseries'}
-    timestepkey    = Column(Integer,Sequence('nobv_timeseries.timesteps_timestepkey_seq'),primary_key=True)
+    __table_args__ = {'schema': 'regiodeal_timeseries'}
+    timestepkey    = Column(Integer,Sequence('regiodeal_timeseries.timesteps_timestepkey_seq'),primary_key=True)
     id             = Column(String, unique=True,nullable=False)
     label          = Column(String)
 
 class TimeSeries(Base):
     __tablename__  = 'timeseries'
-    __table_args__ = {'schema': 'nobv_timeseries'}
-    timeserieskey          = Column(Integer, Sequence('nobv_timeseries.timeserieskeys_timeserieskey_seq'),primary_key=True)
-    locationkey            = Column(Integer, ForeignKey('nobv_timeseries.location.locationkey', ondelete='CASCADE'))
-    parameterkey           = Column(Integer, ForeignKey('nobv_timeseries.parameter.parameterkey', ondelete='CASCADE'))
-    timestepkey            = Column(Integer, ForeignKey('nobv_timeseries.timesteps.timestepkey', ondelete='CASCADE'))
-    filesourcekey          = Column(Integer, ForeignKey('nobv_timeseries.filesource.filesourcekey', ondelete='CASCADE'))
+    __table_args__ = {'schema': 'regiodeal_timeseries'}
+    timeserieskey          = Column(Integer, Sequence('regiodeal_timeseries.timeserieskeys_timeserieskey_seq'),primary_key=True)
+    locationkey            = Column(Integer, ForeignKey('regiodeal_timeseries.location.locationkey', ondelete='CASCADE'))
+    parameterkey           = Column(Integer, ForeignKey('regiodeal_timeseries.parameter.parameterkey', ondelete='CASCADE'))
+    timestepkey            = Column(Integer, ForeignKey('regiodeal_timeseries.timesteps.timestepkey', ondelete='CASCADE'))
+    filesourcekey          = Column(Integer, ForeignKey('regiodeal_timeseries.filesource.filesourcekey', ondelete='CASCADE'))
     valuetype              = Column(Integer, nullable=False,default=0)
     modificationtime       = Column(DateTime, nullable=False)
     
 class TimeSeriesComments(Base):
     __tablename__  = 'timeseriescomments'
-    __table_args__ = {'schema': 'nobv_timeseries'}
-    timeserieskey  = Column(Integer,ForeignKey('nobv_timeseries.timeseries.timeserieskey', ondelete='CASCADE'),primary_key=True)
+    __table_args__ = {'schema': 'regiodeal_timeseries'}
+    timeserieskey  = Column(Integer,ForeignKey('regiodeal_timeseries.timeseries.timeserieskey', ondelete='CASCADE'),primary_key=True)
     datetime       = Column(DateTime, primary_key = True)
     commenttext    = Column(String)
 
 class Users(Base):
     __tablename__  = 'users'
-    __table_args__ = {'schema': 'nobv_timeseries'}
-    userkey        = Column(Integer,Sequence('nobv_timeseries.users_userkey_seq'),primary_key=True)
+    __table_args__ = {'schema': 'regiodeal_timeseries'}
+    userkey        = Column(Integer,Sequence('regiodeal_timeseries.users_userkey_seq'),primary_key=True)
     id             = Column(String, unique=True,nullable=False)
     name           = Column(String)
 
 class Flags(Base):
     __tablename__  = 'flags'
-    __table_args__ = {'schema': 'nobv_timeseries'}
-    flagkey        = Column(Integer,Sequence('nobv_timeseries.users_flagkey_seq'),primary_key=True)
+    __table_args__ = {'schema': 'regiodeal_timeseries'}
+    flagkey        = Column(Integer,Sequence('regiodeal_timeseries.users_flagkey_seq'),primary_key=True)
     id             = Column(String, unique=True,nullable=False)
     name           = Column(String)    
 
 class TimeSeriesManualEditsHistory(Base):
     __tablename__  = 'timeseriesmanualeditshistory'
-    __table_args__ = {'schema': 'nobv_timeseries'}
-    timeserieskey      = Column(Integer,ForeignKey('nobv_timeseries.timeseries.timeserieskey', ondelete='CASCADE'),primary_key=True)
+    __table_args__ = {'schema': 'regiodeal_timeseries'}
+    timeserieskey      = Column(Integer,ForeignKey('regiodeal_timeseries.timeseries.timeserieskey', ondelete='CASCADE'),primary_key=True)
     editdatetime   = Column(DateTime, primary_key = True)
     datetime       = Column(DateTime, primary_key = True)
-    userkey        = Column(Integer,ForeignKey('nobv_timeseries.users.userkey', ondelete='CASCADE'))
+    userkey        = Column(Integer,ForeignKey('regiodeal_timeseries.users.userkey', ondelete='CASCADE'))
     scalarvalue    = Column(Float)
     flags          = Column(Integer,nullable=False)
     commenttext    = Column(String)
 
 class TimeSeriesValuesAndFlags(Base):
     __tablename__  = 'timeseriesvaluesandflags'
-    __table_args__ = (PrimaryKeyConstraint('timeserieskey', 'datetime','scalarvalue'),{'schema': 'nobv_timeseries'})
-    timeserieskey  = Column(Integer, ForeignKey('nobv_timeseries.timeseries.timeserieskey', ondelete='CASCADE'), nullable = False)
+    __table_args__ = (PrimaryKeyConstraint('timeserieskey', 'datetime','scalarvalue'),{'schema': 'regiodeal_timeseries'})
+    timeserieskey  = Column(Integer, ForeignKey('regiodeal_timeseries.timeseries.timeserieskey', ondelete='CASCADE'), nullable = False)
     datetime       = Column(DateTime, nullable=False)
     scalarvalue    = Column(Float,nullable=False)
-    flags          = Column(Integer,ForeignKey('nobv_timeseries.flags.flagkey', ondelete='CASCADE'), nullable=False)
+    flags          = Column(Integer,ForeignKey('regiodeal_timeseries.flags.flagkey', ondelete='CASCADE'), nullable=False)
 
 """records pump history"""
 class Parameter(Base):
     __tablename__      = 'parameter'
-    __table_args__     = {'schema': 'nobv_timeseries'}
-    parameterkey       = Column(Integer,Sequence('nobv_timeseries.parameter_parameterkey_seq'),primary_key=True)
+    __table_args__     = {'schema': 'regiodeal_timeseries'}
+    parameterkey       = Column(Integer,Sequence('regiodeal_timeseries.parameter_parameterkey_seq'),primary_key=True)
     id                 = Column(String)    
     name               = Column(String)
-    unitkey            = Column(Integer, ForeignKey('nobv_timeseries.unit.unitkey', ondelete='CASCADE'))
+    unitkey            = Column(Integer, ForeignKey('regiodeal_timeseries.unit.unitkey', ondelete='CASCADE'))
     compartment        = Column(String)
     shortname          = Column(String)
     description        = Column(String)
@@ -122,15 +122,15 @@ class Parameter(Base):
  
 class Unit(Base):
     __tablename__      = 'unit'
-    __table_args__     = {'schema': 'nobv_timeseries'}    
-    unitkey            = Column(Integer,Sequence('nobv_timeseries.unitdesc_seq'),primary_key=True)
+    __table_args__     = {'schema': 'regiodeal_timeseries'}    
+    unitkey            = Column(Integer,Sequence('regiodeal_timeseries.unitdesc_seq'),primary_key=True)
     unit               = Column(String,nullable=False) 
     unitdescription    = Column(String) 
 
 class FileSource(Base):
     __tablename__  ='filesource'
-    __table_args__ = {'schema': 'nobv_timeseries'}    
-    filesourcekey  = Column(Integer,Sequence('nobv_timeseries.filesource_seq'),primary_key=True)
+    __table_args__ = {'schema': 'regiodeal_timeseries'}    
+    filesourcekey  = Column(Integer,Sequence('regiodeal_timeseries.filesource_seq'),primary_key=True)
     deviceid       = Column(String)
     filesource     = Column(String,nullable=False)
     remark         = Column(String)
@@ -141,9 +141,9 @@ class FileSource(Base):
 
 class Transaction(Base):
     __tablename__   ='transaction'
-    __table_args__  = {'schema': 'nobv_timeseries'}    
-    transactionkey  = Column(Integer,Sequence('nobv_timeseries.transaction_seq'),primary_key=True)
-    timeserieskey   = Column(Integer, ForeignKey('nobv_timeseries.timeseries.timeserieskey', ondelete='CASCADE'), nullable = False)
+    __table_args__  = {'schema': 'regiodeal_timeseries'}    
+    transactionkey  = Column(Integer,Sequence('regiodeal_timeseries.transaction_seq'),primary_key=True)
+    timeserieskey   = Column(Integer, ForeignKey('regiodeal_timeseries.timeseries.timeserieskey', ondelete='CASCADE'), nullable = False)
     transactiontime = Column(DateTime, nullable=False)
     periodstart     = Column(DateTime, nullable=False)
     periodend       = Column(DateTime, nullable=False)
@@ -151,9 +151,9 @@ class Transaction(Base):
 
 class Location(Base):
     __tablename__  = 'location'
-    __table_args__ = {'schema': 'nobv_timeseries'}
-    locationkey        = Column(Integer,Sequence('nobv_timeseries.location_locationkey_seq1'),primary_key=True)    #key
-    filesourcekey      = Column(Integer,ForeignKey('nobv_timeseries.filesource.filesourcekey', ondelete='CASCADE'))  #fskey
+    __table_args__ = {'schema': 'regiodeal_timeseries'}
+    locationkey        = Column(Integer,Sequence('regiodeal_timeseries.location_locationkey_seq1'),primary_key=True)    #key
+    filesourcekey      = Column(Integer,ForeignKey('regiodeal_timeseries.filesource.filesourcekey', ondelete='CASCADE'))  #fskey
     diverid            = Column(String)
     filterid           = Column(Integer)
     filterdepth        = Column(Float)

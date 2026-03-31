@@ -55,7 +55,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 
 # local procedures
-from orm_timeseries.orm_timeseries_nobv import (
+from orm_timeseries.orm_timeseries_regiodeal import (
     Base,
     FileSource,
     Location,
@@ -65,7 +65,7 @@ from orm_timeseries.orm_timeseries_nobv import (
     TimeSeriesValuesAndFlags,
     Flags,
 )
-from ts_helpers.ts_helpers_nobv import (
+from ts_helpers.ts_helpers_regiodeal import (
     establishconnection,
     read_config,
     loadfilesource,
@@ -91,7 +91,7 @@ def latest_entry(skey):
     """function to find the lastest timestep entry per skey.
     input = skey
     output = pandas df containing either none or a date"""
-    stmt = """select max(datetime) from nobv_timeseries.timeseriesvaluesandflags
+    stmt = """select max(datetime) from regiodeal_timeseries.timeseriesvaluesandflags
         where timeserieskey={s};""".format(
         s=skey
     )
@@ -183,7 +183,7 @@ def extract_info_from_text_file(filename):
 
 def find_locationkey():
     # find the max locationkey which is currently stored in the database
-    stmt = """select max(locationkey) from nobv_timeseries.location;"""
+    stmt = """select max(locationkey) from regiodeal_timeseries.location;"""
     with engine.connect() as conn:
         r = conn.execute(text(stmt)).fetchall()[0][0]
     return r
@@ -199,6 +199,7 @@ def find_if_stored(name):
     with engine.connect() as conn:
         return conn.execute(stmt, {"name": name}).scalar()
 
+
 # TODO assign primary key to the location_metadata table (well_id)
 
 # set reference to config file
@@ -211,7 +212,7 @@ else:
     fc = r'C:\projecten\groundwater\config_online_qsomers.txt'
 session, engine = establishconnection(fc)
 
-root = r"p:\11207812-somers-ontwikkeling\3-somers_development\QSOMERS\NOBV\2026\Grondwaterreeksen"
+root = r"P:\11207812-somers-ontwikkeling\3-somers_development\QSOMERS\Regiodeal\2026\Grondwaterreeksen"
 # assigning parameters, either grondwaterstand or slootwaterpeil
 # zoetwaterstijghoogtes
 pkeygwm = sparameter(
@@ -292,12 +293,12 @@ for root, subdirs, files in os.walk(root):
                     df.to_sql(
                         "location",
                         engine,
-                        schema="nobv_timeseries",
+                        schema="regiodeal_timeseries",
                         index=None,
                         if_exists="append",
                     )
                     stmt = """update {s}.{t} set geom = st_setsrid(st_point(x,y),epsgcode) where geom is null;""".format(
-                        s="nobv_timeseries", t="location"
+                        s="regiodeal_timeseries", t="location"
                     )
                     with engine.begin() as conn:
                         conn.execute(text(stmt))
@@ -336,7 +337,7 @@ for root, subdirs, files in os.walk(root):
                             engine,
                             index=False,
                             if_exists="append",
-                            schema="nobv_timeseries",
+                            schema="regiodeal_timeseries",
                         )
                     else:
                         print("not updating")
@@ -348,7 +349,7 @@ for root, subdirs, files in os.walk(root):
                 y = find_if_stored(
                     name
                 )  # check if stored in DB, if not stored, the following code will be run
-                if y == False:
+                if y is None:
                     print("Updating:", name)
                     x = find_locationkey()
                     if x is None:
@@ -363,12 +364,12 @@ for root, subdirs, files in os.walk(root):
                     locationtable.to_sql(
                         "location",
                         engine,
-                        schema="nobv_timeseries",
+                        schema="regiodeal_timeseries",
                         index=None,
                         if_exists="append",
                     )
                     stmt = """update {s}.{t} set geom = st_setsrid(st_point(x,y),epsgcode) where geom is null;""".format(
-                        s="nobv_timeseries", t="location"
+                        s="regiodeal_timeseries", t="location"
                     )
                     with engine.begin() as conn:
                         conn.execute(text(stmt))
@@ -410,7 +411,7 @@ for root, subdirs, files in os.walk(root):
                     metadata.to_sql(
                         "location_metadata2",
                         engine,
-                        schema="nobv_timeseries",
+                        schema="regiodeal_timeseries",
                         index=None,
                         if_exists="append",
                         dtype=dtype,
@@ -450,7 +451,7 @@ for root, subdirs, files in os.walk(root):
                             engine,
                             index=False,
                             if_exists="append",
-                            schema="nobv_timeseries",
+                            schema="regiodeal_timeseries",
                         )
                     else:
                         print("not updating")
