@@ -177,6 +177,10 @@ with engine.connect() as conn:
         # it is easy to start all over again, without the need to check which data is already in the database and which not.
         try:
             gw_bro = hpd.GroundwaterObs.from_bro(bro_id, t, tmin=lastdate)
+            is_empty = gw_bro.empty
+            if is_empty:
+                print(f"No data for {bro_id} (source value: {raw_bro_id}) since {lastdate}")
+                continue
             descr = gw_bro.describe()
             cnt = descr["values"]["count"]
             if cnt == 0:
