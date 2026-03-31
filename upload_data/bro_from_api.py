@@ -179,12 +179,12 @@ with engine.connect() as conn:
             gw_bro = hpd.GroundwaterObs.from_bro(bro_id, t, tmin=lastdate)
             is_empty = gw_bro.empty
             if is_empty:
-                print(f"No data for {bro_id} (source value: {raw_bro_id}) since {lastdate}")
+                print(f"No data for {bro_id} since {lastdate}")
                 continue
             descr = gw_bro.describe()
             cnt = descr["values"]["count"]
             if cnt == 0:
-                print(f"No new data for {bro_id} (source value: {raw_bro_id}) since {lastdate}")
+                print(f"No new data for {bro_id} since {lastdate}")
                 continue
         except Exception as e:
             print(f"BRO download failed for {bro_id} (source value: {raw_bro_id}): {e}")
