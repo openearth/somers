@@ -457,5 +457,5 @@ for root, subdirs, files in os.walk(root):
                         print("not updating")
 
                 else:
-                    print("NOT SWM or GWM:", name)
+                    print("Already stored, skipping:", name)
 # %%
