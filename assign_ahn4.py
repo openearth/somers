@@ -45,7 +45,8 @@ from utils_wcs import *
 from ts_helpers.ts_helpers import establishconnection, testconnection
 
 # globals
-geoserver_url = "https://service.pdok.nl/rws/ahn/wcs/v1_0"
+geoserver_url_2024 = "https://service.pdok.nl/rws/ahn/wcs/v1_0"
+geoserver_url = 'https://service.pdok.nl/rws/actueel-hoogtebestand-nederland/wcs/v1_0'
 layername = "dtm_05m"
 # tmpdir = r"c:\temp\somers"
 # derive tmpdir from system
