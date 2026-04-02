@@ -182,7 +182,7 @@ def assign_ahn(engine, tbl, metadatatable):
         strsql = f"create table if not exists {nwtbl} (well_id integer primary key, surface_level_ahn4_m_nap double precision)"
         with engine.begin() as connection:  
             connection.execute(text(strsql))
-        print("table created", nwtbl)
+            print("table created", nwtbl)
         # rquest locationky, xy in long lat for every record
         strsql = f"""select locationkey, 
         st_x(st_transform(geom,4326)),
