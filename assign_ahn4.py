@@ -39,7 +39,7 @@ from pyproj import Proj, transform
 from owslib.wcs import WebCoverageService
 
 import rasterio
-
+from sqlalchemy import text 
 ## Utils WCS [from fast]
 from utils_wcs import *
 from ts_helpers.ts_helpers import establishconnection, testconnection
@@ -131,7 +131,8 @@ def getsrid(engine, tbl):
     schema = tbl.split(".")[0]
     table = tbl.split(".")[1]
     strsql = f"select find_srid('{schema}','{table}','geom')"
-    srid = engine.execute(strsql).fetchone()[0]
+    with engine.begin() as connection:  
+        srid = connection.execute(text(strsql)).fetchone()[0]
     return srid
 
 
@@ -179,13 +180,15 @@ def assign_ahn(engine, tbl, metadatatable):
         # create table location_mv, with ID and MV based on AHN
         nwtbl = metadatatable
         strsql = f"create table if not exists {nwtbl} (well_id integer primary key, surface_level_ahn4_m_nap double precision)"
-        engine.execute(strsql)
+        with engine.begin() as connection:  
+            connection.execute(text(strsql))
         print("table created", nwtbl)
         # rquest locationky, xy in long lat for every record
         strsql = f"""select locationkey, 
         st_x(st_transform(geom,4326)),
         st_y(st_transform(geom,4326)) from {tbl}"""
-        locwgs84 = engine.execute(strsql).fetchall()
+        with engine.begin() as connection:
+            locwgs84 = connection.execute(text(strsql)).fetchall()
 
         for i in range(len(locwgs84)):
             lockey = locwgs84[i][0]
@@ -198,14 +201,15 @@ def assign_ahn(engine, tbl, metadatatable):
                 else:
                     mv = "NULL"
                     print(lockey, "from table", tbl, "has geometry None")
-                strsql = f"""insert into {nwtbl} (well_id, surface_level_ahn4_m_nap) 
+                strsql = f"""insert into {nwtbl} (well_id, ahn4_m_nap) 
                             VALUES ({lockey},{mv})
                             ON CONFLICT(well_id)
                             DO UPDATE SET
-                            surface_level_ahn4_m_nap = {mv}"""  # add AHN values as surface_level_m_nap
-                engine.execute(strsql)
-            except:
-                print("not updating AHN for lockey ", lockey)
+                            ahn4_m_nap = {mv}"""  # add AHN values as ahn4_m_nap
+                with engine.begin() as connection:
+                    connection.execute(text(strsql))
+            except Exception as e:
+                print("not updating AHN for lockey ", lockey, "Error:", e)
 
 
 def test():

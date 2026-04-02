@@ -25,8 +25,15 @@
 # your own tools.
 
 ## some helper functions
-from ts_helpers.ts_helpers import establishconnection, testconnection
-from db_helpers import create_location_metadatatable
+# Add the parent directory to the system path
+import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from sqlalchemy import text
+from ts_helpers.ts_helpers_bro import establishconnection
+from ts_helpers import ts_helpers
+from db_helpers import tablesetup,create_location_metadatatable
 import assign_soiltype
 import assign_parcelvalues
 import assign_ahn4
@@ -51,8 +58,9 @@ session, engine = establishconnection(cf)
 
 # 1 setup metadata table (tbl should be new name)
 tbl = "bro_timeseries.location"
-nwtbl = "bro_timeseries.location_metadata2"
-create_location_metadatatable(cf, nwtbl)
+nwtbl = "bro_timeseries.location_metadata"
+dctcolumns = tablesetup()
+create_location_metadatatable(cf, nwtbl,dctcolumns)
 
 # 2 BRO specific
 # this part is different for every source, since the data is not exactly the same
@@ -63,29 +71,30 @@ SELECT
 	st_x(geom),
 	st_y(geom),
 	z as z_surface_level_m_nap,
-	ROUND((z-tubetop)::numeric,2) as top_screen_m_mv,
-	ROUND((z-tubebot)::numeric,2) as bot_screen_m_mv
+	ROUND((z-tubetop)::numeric,2) as screen_top_m_sfl,
+	ROUND((z-tubebot)::numeric,2) as screen_bot_m_sfl
 FROM bro_timeseries.location
 order by locationkey
 """
-locs = engine.execute(strsql).fetchall()
-for i in range(len(locs)):
-    lockey = locs[i][0]
-    x = locs[i][1]
-    y = locs[i][2]
-    z = locs[i][3]
-    zt = locs[i][4]
-    zb = locs[i][5]
-    try:
-        strsql = f"""insert into {nwtbl} (well_id, x_well,y_well,z_surface_level_m_nap,top_screen_m_mv,bot_screen_m_mv) 
-                    VALUES ({lockey},{x},{y}, {z}, {zt},{zb})
-                    ON CONFLICT(well_id)
-                    DO UPDATE SET
-                    x_well = {x}, y_well = {y}, z_surface_level_m_nap = {z}, top_screen_m_mv = {zt}, bot_screen_m_mv = {zb}"""
-        engine.execute(strsql)
-    except Exception as e:
-        # Handle the conflict (e.g., log the error or ignore it)
-        print(f"Error: {e}. {lockey}.")
+with engine.begin() as connection:
+    for row in connection.execute(text(strsql)):
+        lockey, x, y, z, zt, zb = row    
+        try:
+            strsql = f"""insert into {nwtbl} (well_id, 
+                                              x_well,
+                                              y_well,
+                                              z_surface_level_m_nap,
+                                              screen_top_m_sfl,
+                                              screen_bot_m_sfl) 
+                        VALUES ({lockey},{x},{y}, {z}, {zt},{zb})
+                        ON CONFLICT(well_id)
+                        DO UPDATE SET
+                        x_well = {x}, y_well = {y}, z_surface_level_m_nap = {z}, screen_top_m_sfl = {zt}, screen_bot_m_sfl = {zb}"""
+            with engine.begin() as connection:
+                connection.execute(text(strsql))
+        except Exception as e:
+            # Handle the conflict (e.g., log the error or ignore it)
+            print(f"Error: {e}. {lockey}.")
 
 # 3 assign ahn4 (needs some small changes to get it working)
 # need of geometry column for conversion to Lat-long, it is expected that geom is in 28992
