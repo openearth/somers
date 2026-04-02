@@ -41,6 +41,7 @@ import numpy as np
 # third party packages
 from sqlalchemy.sql.expression import update
 from sqlalchemy import exc, func, text
+from sqlalchemy import MetaData, Table
 from sqlalchemy.dialects import postgresql
 from sqlalchemy import text
 import hydropandas as hpd
@@ -129,6 +130,24 @@ def lastgwstage(engine, bro_id, t, pid, fid):
     return strdate
 
 
+def update_gmw_is_empty(engine, localid, is_empty):
+    """Update bro_timeseries.groundwater_monitoring_well.is_empty for one localid."""
+    metadata = MetaData()
+    gmw_table = Table(
+        "groundwater_monitoring_well",
+        metadata,
+        schema="bro_timeseries",
+        autoload_with=engine,
+    )
+    stmt = (
+        update(gmw_table)
+        .where(gmw_table.c.localid == localid)
+        .values(is_empty=is_empty)
+    )
+    with engine.begin() as conn:
+        conn.execute(stmt)
+
+
 # %%
 # set parameter, timeseries and flag
 flagid = sflag(fc, "goedgekeurd")
@@ -148,10 +167,13 @@ if version != 2026:
             where veenperceel and removed = 'nee'"""
 else:   
     strSql = """select localid as bro_identifier from bro_timeseries.groundwater_monitoring_well 
-            where veenperceel 
-            and localid not in (select replace(name,'_','_00') from bro_timeseries.location)"""
-updatedb = True  # in this case there is already data available, data will be updated record by record
+            where veenperceel and is_empty is not null"""
+
+# bear in mind... is_empty is not null means that the specific record has a value of is_empty.
+# the value is true (if gw_bro.empty is true) or false (if gw_bro.describe returns 0 values or .... crashes). 
+
 # set to False if complete reload of the BRO data is necessary
+updatedb = True  # in this case there is already data available, data will be updated record by record
 
 with engine.connect() as conn:
     res = conn.execute(text(strSql))
@@ -179,12 +201,14 @@ with engine.connect() as conn:
             gw_bro = hpd.GroundwaterObs.from_bro(bro_id, t, tmin=lastdate)
             is_empty = gw_bro.empty
             if is_empty:
-                print(f"No data for {bro_id} (source value: {raw_bro_id}) since {lastdate}")
+                update_gmw_is_empty(engine, raw_bro_id, is_empty)
+                print(f"No data for {bro_id} since {lastdate}")
                 continue
             descr = gw_bro.describe()
             cnt = descr["values"]["count"]
             if cnt == 0:
-                print(f"No new data for {bro_id} (source value: {raw_bro_id}) since {lastdate}")
+                update_gmw_is_empty(engine, raw_bro_id, False)
+                print(f"No new data for {bro_id} since {lastdate}")
                 continue
         except Exception as e:
             print(f"BRO download failed for {bro_id} (source value: {raw_bro_id}): {e}")

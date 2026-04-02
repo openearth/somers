@@ -78,15 +78,6 @@ from ts_helpers.ts_helpers_nobv import (
     stimestep,
 )
 
-
-def read_config(af):
-    # Default config file (relative path, does not work on production, weird)
-    # Parse and load
-    cf = configparser.ConfigParser()
-    cf.read(af)
-    return cf
-
-
 def latest_entry(skey):
     """function to find the lastest timestep entry per skey.
     input = skey
@@ -192,7 +183,7 @@ def find_locationkey():
 def find_if_stored(name):
     """Return locationkey when the location exists, otherwise None."""
     stmt = text(
-        """select locationkey from regiodeal_timeseries.location
+        """select locationkey from nobv_timeseries.location
         where name = :name
         limit 1;"""
     )
@@ -202,7 +193,7 @@ def find_if_stored(name):
 # TODO assign primary key to the location_metadata table (well_id)
 
 # set reference to config file
-local = False
+local = True
 if local:
     # fc = r"C:\develop\somers\configuration_local.txt"
     fc = r'C:\projecten\groundwater\config_local_qsomers.txt'
@@ -211,7 +202,7 @@ else:
     fc = r'C:\projecten\groundwater\config_online_qsomers.txt'
 session, engine = establishconnection(fc)
 
-root = r"p:\11207812-somers-ontwikkeling\3-somers_development\QSOMERS\NOBV\2026\Grondwaterreeksen"
+data_root = r"p:\11207812-somers-ontwikkeling\3-somers_development\QSOMERS\NOBV\2026\Grondwaterreeksen"
 # assigning parameters, either grondwaterstand or slootwaterpeil
 # zoetwaterstijghoogtes
 pkeygwm = sparameter(
@@ -249,7 +240,7 @@ new_loctabel = ["name", "x", "y", "tubetop", "tubebot", "altitude_msl"]
 new_loc_swm = ["name", "x", "y"]
 timeseries = ["datetime", "scalarvalue"]
 
-for root, subdirs, files in os.walk(root):
+for root, subdirs, files in os.walk(data_root):
     for count, file in enumerate(files):
         if file.lower().endswith(".txt"):
             name = os.path.basename(file).split("_", 1)[1].rsplit(".", 1)[0]
@@ -260,16 +251,6 @@ for root, subdirs, files in os.walk(root):
             nrrows, colnames, xycols, datum = skiprows(os.path.join(root, file))
 
             fskey = loadfilesource(os.path.join(root, file), fc, f"{name}_{data}")
-            # need to update part in the location table and another part in the location_metadata
-
-            dfx = pd.read_csv(
-                os.path.join(root, file),
-                delimiter=";",
-                skiprows=nrrows,
-                header=None,
-                names=colnames,
-            )
-            # print(dfx)
             if data == "SWM":
                 df = extract_info_from_text_file(os.path.join(root, file))
                 # print(df.columns)
@@ -348,7 +329,7 @@ for root, subdirs, files in os.walk(root):
                 y = find_if_stored(
                     name
                 )  # check if stored in DB, if not stored, the following code will be run
-                if y == False:
+                if y is None:
                     print("Updating:", name)
                     x = find_locationkey()
                     if x is None:
@@ -456,5 +437,5 @@ for root, subdirs, files in os.walk(root):
                         print("not updating")
 
                 else:
-                    print("NOT SWM or GWM:", name)
+                    print("Already stored, skipping:", name)
 # %%

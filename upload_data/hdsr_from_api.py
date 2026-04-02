@@ -36,6 +36,8 @@ import requests
 from datetime import datetime
 import numpy as np
 import configparser
+from shapely.geometry import shape, mapping
+import geopandas as gpd
 
 # third party packages
 from sqlalchemy.sql.expression import update
@@ -71,9 +73,12 @@ from ts_helpers.ts_helpers_hdsr import (
     stimestep,
 )
 
-# ------temp paths/things for testing
-# path_csv = r"C:\projecten\nobv\2023\code"
-# -------
+
+from pyproj import datadir
+
+# Set your correct PROJ directory here
+PROJ_LIB = r"C:\Users\dees\.conda\envs\database\Library\share\proj"
+
 
 # %%
 # ----------------postgresql connection
@@ -104,6 +109,14 @@ def latest_entry(skey):
         r = conn.execute(text(stmt)).fetchall()[0][0]
         r = pd.to_datetime(r)
     return r
+
+def reproject_data(geom):
+    point = shape(geom)
+    gdf = gpd.GeoDataFrame({'geometry': [point]}, crs="EPSG:4326")
+    gdf_reproj = gdf.to_crs("EPSG:28992")  # change to your CRS
+    new_dict = mapping(gdf_reproj.geometry.iloc[0])
+    return new_dict
+
 
 
 configfile = r"C:\projecten\groundwater\hsdr_api.txt"
@@ -138,13 +151,13 @@ while response["next"]:
     # start retrieving of the seperate timeseries per groundwaterstation
     for i in range(len(response)):
         geom = response["results"][i]["geometry"]
+        geom = reproject_data(geom)
         # creation of a metadata dict to store the data
         if response["results"][i][
             "filters"
         ]:  # looks if key 'filters'is filled, if not, it skips the entry
             for j in range(len(response["results"][i].get("filters"))):
                 fskey = loadfilesource(response["results"][i]["url"], fc)
-                location
 
                 locationkey = location(
                     fc=fc,
@@ -152,19 +165,20 @@ while response["next"]:
                     name=response["results"][i]["filters"][j]["code"],
                     x=geom["coordinates"][0],
                     y=geom["coordinates"][1],
-                    geom = geom,
-                    epsg=4326,
+                    epsg=28992,
                     description=response["results"][i]["station_type"],
                     altitude_msl=response["results"][i]["filters"][j]["top_level"],
                     tubetop=response["results"][i]["filters"][j]["filter_top_level"],
                     tubebot=response["results"][i]["filters"][j]["filter_bottom_level"],
                 )
 
-                # stmt = """update {s}.{t} set geom = st_setsrid(st_point(x,y),epsgcode) where geom is null;""".format(
-                #         s="hdsr_timeseries", t="location"
-                #     )
-                # with engine.begin() as conn:
-                #     conn.execute(text(stmt))
+                stmt = text(
+                    "update hdsr_timeseries.location"
+                    " set geom = st_setsrid(st_point(x,y),epsgcode)"
+                    " where geom is null and locationkey = :lkey"
+                )
+                with engine.begin() as conn:
+                    conn.execute(stmt, {"lkey": locationkey})
 
                 # here there is a call to find out if there is a timeseries entry is in the filter column
                 if response["results"][i]["filters"][j][
@@ -188,7 +202,7 @@ while response["next"]:
                                 "page_size": "100",
                             }
                             # to get the actual timeseries, we need to call the 'events' parameter
-                            # therefor we need to make a new request, where we can use the parameters which we defined previouslgy
+                            # therefor we need to make a new request, where we can use the parameters which we defined previously
                             t = requests.get(ts + "events", params=params).json()
 
                             # only retrieving data which has a flag below five, flags are added next to the timeseries
@@ -197,7 +211,7 @@ while response["next"]:
                             if t["results"]:
                                 while t[
                                     "next"
-                                ]:  # iteration trhough all the different timeseries page, continue as long as there is a next page
+                                ]:  # iteration through all the different timeseries pages, continue as long as there is a next page
                                     t = requests.get(t["next"]).json()
 
                                     pkeygws = sparameter(
@@ -222,19 +236,17 @@ while response["next"]:
 
                                     df = pd.DataFrame.from_dict(t["results"])
                                     df = df[df.flag == 0]
-                                    # print(df.flag.size)
                                     if df.flag.size > 0:
                                         flagkey = sflag(
                                             fc, str(df.flag.values[0]), "FEWS-flag"
                                         )
 
                                         df["datetime"] = pd.to_datetime(df["time"])
+                                        df["datetime"] = df["datetime"].dt.tz_convert("Europe/Amsterdam")
 
                                         r = latest_entry(skeygws)
                                         print(r)
-                                        if r != (df["datetime"].iloc[-1]).replace(
-                                            tzinfo=None
-                                        ):
+                                        if r != (df["datetime"].iloc[-1]).dt.tz_convert("Europe/Amsterdam"):
                                             df.drop(
                                                 columns=[
                                                     "validation_code",
