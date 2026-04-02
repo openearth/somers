@@ -1,8 +1,7 @@
 #  Copyright notice
 #   --------------------------------------------------------------------
-#   Copyright (C) 2023 Deltares for Projects with a FEWS datamodel in
-#                 PostgreSQL/PostGIS database used various project
-#   Gerrit Hendriksen@deltares.nl
+#   Copyright (C) 2023 Deltares
+#                 Somers project with PostgreSQL/PostGIS database
 #   Nathalie Dees (nathalie.dees@deltares.nl)
 #
 #   This library is free software: you can redistribute it and/or modify
@@ -25,6 +24,11 @@
 # Sign up to recieve regular updates of this function, and to contribute
 # your own tools.
 
+# Nathalie Dees
+# retrieving timeseries data from waterboards from Lizard API (v4!)~
+# before use, check current lizard version
+# later, data will be put in a database
+
 # %%
 import os
 import pandas as pd
@@ -32,10 +36,12 @@ import requests
 from datetime import datetime
 import numpy as np
 import configparser
+from shapely.geometry import shape, mapping
+import geopandas as gpd
 
 # third party packages
 from sqlalchemy.sql.expression import update
-from sqlalchemy import exc, func
+from sqlalchemy import exc, func, text
 from sqlalchemy.dialects import postgresql
 
 # Add the parent directory to the system path
@@ -67,15 +73,53 @@ from ts_helpers.ts_helpers_hhnk import (
     stimestep,
 )
 
-# ------temp paths/things for testing
-path_csv = r"C:\projecten\nobv\2023\code"
-# -------
+
+from pyproj import datadir
+
+# Set your correct PROJ directory here
+PROJ_LIB = r"C:\Users\dees\.conda\envs\database\Library\share\proj"
+
 
 # %%
-# api key HHNK
-# set up connection via configfile
+# ----------------postgresql connection
+# data is stored in PostgreSQL/PostGIS database. A connection string is needed to interact with the database. This is typically stored in
+# a file.
 
-configfile = r"C:\projecten\grondwater_monitoring\nobv\2023\apikey\hhnk_config.txt"
+local = True
+if local:
+    # fc = r"C:\develop\somers\configuration_local.txt"
+    fc = r'C:\projecten\groundwater\config_local_qsomers.txt'
+else:
+    # fc = r"C:\develop\somers\configuration_somers.txt"
+    fc = r'C:\projecten\groundwater\config_online_qsomers.txt'
+session, engine = establishconnection(fc)
+
+
+# Functions
+# function to find latest entry
+def latest_entry(skey):
+    """function to find the lastest timestep entry per skey.
+    input = skey
+    output = pandas df containing either none or a date"""
+    stmt = """select max(datetime) from nobv_timeseries.timeseriesvaluesandflags
+        where timeserieskey={s};""".format(
+        s=skey
+    )
+    with engine.connect() as conn:
+        r = conn.execute(text(stmt)).fetchall()[0][0]
+        r = pd.to_datetime(r)
+    return r
+
+def reproject_data(geom):
+    point = shape(geom)
+    gdf = gpd.GeoDataFrame({'geometry': [point]}, crs="EPSG:4326")
+    gdf_reproj = gdf.to_crs("EPSG:28992")  # change to your CRS
+    new_dict = mapping(gdf_reproj.geometry.iloc[0])
+    return new_dict
+
+
+
+configfile = r"C:\projecten\groundwater\hsdr_api.txt"
 cf = configparser.ConfigParser()
 cf.read(configfile)
 
@@ -88,39 +132,16 @@ json_headers = {
     "password": password,
     "Content-Type": "application/json",
 }
-
-local = False
-if local:
-    fc = r"C:\projecten\grondwater_monitoring\nobv\2023\connection_local_somers.txt"
-else:
-    fc = r"C:\projecten\grondwater_monitoring\nobv\2023\connection_online_qsomers.txt"
-session, engine = establishconnection(fc)
-
-
-# Functions
-# function to find latest entry
-def latest_entry(skey):
-    """function to find the lastest timestep entry per skey.
-    input = skey
-    output = pandas df containing either none or a date"""
-    stmt = """select max(datetime) from hhnk_timeseries.timeseriesvaluesandflags
-        where timeserieskey={s};""".format(
-        s=skey
-    )
-    r = engine.execute(stmt).fetchall()[0][0]
-    r = pd.to_datetime(r)
-    return r
-
-
-# %% Retrieving data from API and putting in database
+# %%
 # the url to retrieve the data from, groundwaterstation data
+
 ground = "https://hhnk.lizard.net/api/v4/groundwaterstations/"
 # creation of empty lists to fill during retrieving process
 gdata = []
 tsv = []
 timeurllist = []
 
-# retrieve information about the different groundwater stations, this loops through all the pages
+# retrieve information about' the different groundwater stations, this loops through all the pages
 response = requests.get(ground, headers=json_headers).json()
 groundwater = response["results"]
 while response["next"]:
@@ -128,9 +149,9 @@ while response["next"]:
     groundwater.extend(response["results"])
 
     # start retrieving of the seperate timeseries per groundwaterstation
-    # first request is to retrieve the base information of the location and geometry entries
     for i in range(len(response)):
         geom = response["results"][i]["geometry"]
+        geom = reproject_data(geom)
         # creation of a metadata dict to store the data
         if response["results"][i][
             "filters"
@@ -144,12 +165,20 @@ while response["next"]:
                     name=response["results"][i]["filters"][j]["code"],
                     x=geom["coordinates"][0],
                     y=geom["coordinates"][1],
-                    epsg=4326,
+                    epsg=28992,
                     description=response["results"][i]["station_type"],
                     altitude_msl=response["results"][i]["filters"][j]["top_level"],
                     tubetop=response["results"][i]["filters"][j]["filter_top_level"],
                     tubebot=response["results"][i]["filters"][j]["filter_bottom_level"],
                 )
+
+                stmt = text(
+                    "update hhnk_timeseries.location"
+                    " set geom = st_setsrid(st_point(x,y),epsgcode)"
+                    " where geom is null and locationkey = :lkey"
+                )
+                with engine.begin() as conn:
+                    conn.execute(stmt, {"lkey": locationkey})
 
                 # here there is a call to find out if there is a timeseries entry is in the filter column
                 if response["results"][i]["filters"][j][
@@ -173,7 +202,7 @@ while response["next"]:
                                 "page_size": "100",
                             }
                             # to get the actual timeseries, we need to call the 'events' parameter
-                            # therefor we need to make a new request, where we can use the parameters which we defined previouslgy
+                            # therefor we need to make a new request, where we can use the parameters which we defined previously
                             t = requests.get(ts + "events", params=params).json()
 
                             # only retrieving data which has a flag below five, flags are added next to the timeseries
@@ -182,7 +211,7 @@ while response["next"]:
                             if t["results"]:
                                 while t[
                                     "next"
-                                ]:  # iteration trhough all the different timeseries page, continue as long as there is a next page
+                                ]:  # iteration through all the different timeseries pages, continue as long as there is a next page
                                     t = requests.get(t["next"]).json()
 
                                     pkeygws = sparameter(
@@ -207,42 +236,44 @@ while response["next"]:
 
                                     df = pd.DataFrame.from_dict(t["results"])
                                     df = df[df.flag == 0]
-
                                     if df.flag.size > 0:
                                         flagkey = sflag(
                                             fc, str(df.flag.values[0]), "FEWS-flag"
                                         )
 
                                         df["datetime"] = pd.to_datetime(df["time"])
+                                        df["datetime"] = df["datetime"].dt.tz_convert("Europe/Amsterdam")
 
                                         r = latest_entry(skeygws)
-                                        if r != (df["datetime"].iloc[-1]).replace(
-                                            tzinfo=None
-                                        ):
-                                            try:
-                                                df.drop(
-                                                    columns=[
-                                                        "validation_code",
-                                                        "comment",
-                                                        "time",
-                                                        "last_modified",
-                                                        "detection_limit",
-                                                        "flag",
-                                                    ],
-                                                    inplace=True,
-                                                )
-                                                df = df.rename(
-                                                    columns={"value": "scalarvalue"}
-                                                )  # change column
-                                                df["timeserieskey"] = skeygws
-                                                df["flags"] = flagkey
-                                                df.to_sql(
-                                                    "timeseriesvaluesandflags",
-                                                    engine,
-                                                    index=False,
-                                                    if_exists="append",
-                                                    schema="hhnk_timeseries",
-                                                )
-                                            except:
-                                                continue
+                                        print(r)
+                                        if r != (df["datetime"].iloc[-1]).dt.tz_convert("Europe/Amsterdam"):
+                                            df.drop(
+                                                columns=[
+                                                    "validation_code",
+                                                    "comment",
+                                                    "time",
+                                                    "last_modified",
+                                                    "detection_limit",
+                                                    "flag",
+                                                ],
+                                                inplace=True,
+                                            )
+                                            df = df.rename(
+                                                columns={"value": "scalarvalue"}
+                                            )  # change column
+                                            df["timeserieskey"] = skeygws
+                                            df["flags"] = flagkey
+                                            df.to_sql(
+                                                "timeseriesvaluesandflags",
+                                                engine,
+                                                index=False,
+                                                if_exists="append",
+                                                schema="hhnk_timeseries",
+                                            )
+                                            print(
+                                                "updated: ",
+                                                response["results"][i]["filters"][j][
+                                                    "code"
+                                                ],
+                                            )
 # %%
