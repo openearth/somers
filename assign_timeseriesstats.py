@@ -31,7 +31,7 @@
 # base packages
 import os
 import pandas as pd
-
+from sqlalchemy import text
 # import custum functions
 from ts_helpers.ts_helpers import establishconnection, testconnection
 
@@ -56,8 +56,8 @@ def settimeseriesstats(engine, tbl, nwtbl):
                     end_date = '{row['maxdate']}',
                     records = {row['nrecords']} 
                     where well_id = {row['well_id']}"""
-        engine.execute(strsql)
-
+        with engine.begin() as connection:
+            connection.execute(text(strsql))
 
 def test():
     cf = r"C:\develop\extensometer\connection_online.txt"

@@ -29,6 +29,7 @@
 
 ## various helper functions
 from db_helpers import preptable
+from sqlalchemy import text
 
 # for every location the distance to ditch, road and centr of railroad is derived from top 10 data
 # bear in mind, this is a very time costly operation, takes a long time (well, up to an hour)!
@@ -56,7 +57,8 @@ def assign_t10(engine, tbl, metatable):
         preptable(engine, nwtbl, c, "double precision")
         strsql = f"""SELECT locationkey 
                 FROM {tbl}"""
-        locs = engine.execute(strsql).fetchall()
+        with engine.begin() as connection:
+            locs = connection.execute(text(strsql)).fetchall()
         for i in range(len(locs)):
             lockey = locs[i][0]
             strsql = f"""SELECT locationkey, 
@@ -66,12 +68,14 @@ def assign_t10(engine, tbl, metatable):
                 ORDER BY
                 l.geom <-> wl.geom
                 limit 1"""
-            vals = engine.execute(strsql).fetchall()
+            with engine.begin() as connection:
+                vals = connection.execute(text(strsql)).fetchall()  
 
             strsql = f"""insert into {nwtbl} (well_id, {c}) 
                         VALUES ({lockey},{vals[0][1]})
                         ON CONFLICT(well_id)
                         DO UPDATE SET
                         {c} = ROUND({vals[0][1]}::numeric,2)"""
-            engine.execute(strsql)
+            with engine.begin() as connection:
+                connection.execute(text(strsql))
     return
