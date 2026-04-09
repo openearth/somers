@@ -59,6 +59,7 @@ def assign_t10(engine, tbl, metatable):
                 FROM {tbl}"""
         with engine.begin() as connection:
             locs = connection.execute(text(strsql)).fetchall()
+        print(f'calculate distances to {t10} for {len(locs)} locations')
         for i in range(len(locs)):
             lockey = locs[i][0]
             strsql = f"""SELECT locationkey, 
