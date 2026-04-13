@@ -48,7 +48,135 @@ basedir = Path(
 ontvangen_dir = basedir.joinpath("ontvangen")
 figdir = basedir.joinpath("bewerkt", "figuren")
 
-# slootpeil meetreeksen (swm)
+############################
+# # samenvoegen Langeweide meetreeksen
+############################
+langeweide_names = [
+    "GWM_20170518B001B",
+    "GWM_20170518B003B",
+    "GWM_20170518B004A",
+    "GWM_20170518B005",
+    "GWM_20170518B022",
+    "GWM_20170518B025",
+    "GWM_20170518B026",
+]
+data_2026_path = ontvangen_dir.joinpath("Aanlevering_HDSR_Deltares_LangeWeide_2026.csv")
+data_2026 = pd.read_csv(
+    data_2026_path,
+    sep=";",
+    header=0,
+    skiprows=[1],
+    index_col=0,
+)
+data_2026.index = pd.to_datetime(data_2026.index, format="%d-%m-%Y %H:%M")
+
+for name in langeweide_names:
+    source_txt_path = Path(
+        f"p:/11207812-somers-ontwikkeling/3-somers_development/QSOMERS/Handmatige uitvraag 2024/handmatige_uitvraag_bestanden/HDSR/geschikte_data/{name}.txt"
+    )
+
+    data_2024_peilbuis = pd.read_csv(
+        source_txt_path,
+        sep=";",
+        index_col=0,
+        skiprows=range(0, 24),
+    )
+    data_2024_peilbuis.index = pd.to_datetime(data_2024_peilbuis.index, format="%d-%m-%Y %H:%M:%S")
+
+    common_col = data_2024_peilbuis.columns[0]
+    data_2024_peilbuis = data_2024_peilbuis.iloc[:, 0].rename(common_col)
+    data_2026_peilbuis = data_2026[name.replace("GWM_", "")].rename(common_col)
+
+    data_combined = pd.concat([data_2024_peilbuis, data_2026_peilbuis]).to_frame()
+    data_combined = data_combined[~data_combined.index.duplicated(keep="first")]
+
+    header_lines = []
+    with open(source_txt_path) as f:
+        for _ in range(24):
+            line = f.readline()
+            if not line:
+                break
+            header_lines.append(line.rstrip("\n"))
+
+    out_path = basedir.joinpath("bewerkt", f"{name}.txt")
+    with open(out_path, "w") as f:
+        for line in header_lines:
+            f.write(f"{line}\n")
+
+    data_combined.to_csv(
+        out_path,
+        mode="a",
+        sep=";",
+        date_format="%d-%m-%Y %H:%M:%S",
+    )
+
+    data_combined.plot(title=name)
+    plt.show()
+
+############################
+# # samenvoegen Spengen meetreeksen
+############################
+spengen_names = [
+    "GWM_B31E2789001",
+]
+data_2026_path = ontvangen_dir.joinpath("Aanlevering_HDSR_Deltares_Spengen_2026.csv")
+data_2026 = pd.read_csv(
+    data_2026_path,
+    sep=",",
+    header=0,
+    skiprows=[1],
+    index_col=0,
+)
+data_2026.index = pd.to_datetime(data_2026.index, format="%m/%d/%Y")
+
+for name in spengen_names:
+    source_txt_path = Path(
+        f"p:/11207812-somers-ontwikkeling/3-somers_development/QSOMERS/Handmatige uitvraag 2024/handmatige_uitvraag_bestanden/HDSR/geschikte_data/{name}.txt"
+    )
+
+    data_2024_peilbuis = pd.read_csv(
+        source_txt_path,
+        sep=";",
+        index_col=0,
+        skiprows=range(0, 24),
+    )
+    data_2024_peilbuis.index = pd.to_datetime(
+        data_2024_peilbuis.index, format="%d-%m-%Y %H:%M:%S"
+    )
+
+    common_col = data_2024_peilbuis.columns[0]
+    data_2024_peilbuis = data_2024_peilbuis.iloc[:, 0].rename(common_col)
+    data_2026_peilbuis = data_2026[name.replace("GWM_", "")].rename(common_col)
+
+    data_combined = pd.concat([data_2024_peilbuis, data_2026_peilbuis]).to_frame()
+    data_combined = data_combined[~data_combined.index.duplicated(keep="first")]
+
+    header_lines = []
+    with open(source_txt_path) as f:
+        for _ in range(24):
+            line = f.readline()
+            if not line:
+                break
+            header_lines.append(line.rstrip("\n"))
+
+    out_path = basedir.joinpath("bewerkt", f"{name}.txt")
+    with open(out_path, "w") as f:
+        for line in header_lines:
+            f.write(f"{line}\n")
+
+    data_combined.to_csv(
+        out_path,
+        mode="a",
+        sep=";",
+        date_format="%d-%m-%Y %H:%M:%S",
+    )
+
+    data_combined.plot(title=name)
+    plt.show()
+
+############################
+# # slootpeil meetreeksen (swm)
+############################
 swm_file = ontvangen_dir.joinpath("slootpeil_meetreeksen_hdsr.csv")
 
 data = pd.read_csv(
