@@ -6,8 +6,7 @@ Created on Tue Jul 19 12:05:14 2022
 
 #  Copyright notice
 #   --------------------------------------------------------------------
-#   Copyright (C) 2023 Deltares for Projects with a FEWS datamodel in
-#                 PostgreSQL/PostGIS database used various project
+#   Copyright (C) 2023,2026 Deltares for QSOMERS
 #   Gerrit Hendriksen@deltares.nl
 #   Nathalie Dees (nathalie.dees@deltares.nl)
 #

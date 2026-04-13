@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright notice
 #   --------------------------------------------------------------------
-#   Copyright (C) 2024 Deltares
+#   Copyright (C) 2024, 2026 Deltares
 #   Gerrit Hendriksen (gerrit.hendriksen@deltares.nl)
 #
 #   This library is free software: you can redistribute it and/or modify
@@ -32,8 +32,11 @@ import time
 
 # import StringIO
 import os
-from db_helpers import preptable
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+from db_helpers import preptable
+from sqlalchemy import text
 
 # Get locations from database
 # convert xy to lon lat --> via query :)
@@ -54,10 +57,11 @@ def getdatafromdb(engine, x, y):
     JOIN soilmap.soilarea_soilunit su on su.maparea_id = sa.maparea_id 
     WHERE st_within(st_geomfromewkt('SRID=28992;POINT({x} {y})'), sa.geom)"""
     try:
-        scode = engine.execute(strsql).fetchone()[0]
-        print("scode", scode)
-        if scode == None:
-            scode = "Null"
+        with engine.connect() as connection:
+            scode = connection.execute(text(strsql)).fetchone()[0]
+            print("scode", scode)
+            if scode == None:
+                scode = "Null"
     except Exception:
         scode = "Null"
     return scode
@@ -76,7 +80,9 @@ def assign_soiltype(engine, tbl):
     strsql = f"""select well_id, 
             x_well,
             y_well from {tbl}"""
-    locs = engine.execute(strsql).fetchall()
+    with engine.begin() as connection:  
+        locs = connection.execute(text(strsql)).fetchall()
+        #locs = engine.execute(text(strsql)).fetchall()
     for i in range(len(locs)):
         lockey = locs[i][0]
         x = locs[i][1]
@@ -87,4 +93,5 @@ def assign_soiltype(engine, tbl):
                         ON CONFLICT(well_id)
                         DO UPDATE SET
                         soil_class = '{soildata}'"""
-        engine.execute(strsql)
+        with engine.begin() as connection:
+            connection.execute(text(strsql))

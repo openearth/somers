@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright notice
 #   --------------------------------------------------------------------
-#   Copyright (C) 2024 Deltares
+#   Copyright (C) 2024, 2026 Deltares
 #   Gerrit Hendriksen (gerrit.hendriksen@deltares.nl)
 #   Nathalie Dees (nathalie.dees@deltares.nl)
 #
@@ -31,7 +31,7 @@
 # base packages
 import os
 import pandas as pd
-
+from sqlalchemy import text
 # import custum functions
 from ts_helpers.ts_helpers import establishconnection, testconnection
 
@@ -43,7 +43,7 @@ def settimeseriesstats(engine, tbl, nwtbl):
 
     strsql = f"""select well_id, min(datetime) as mindate,max(datetime) as maxdate, count(*) as nrecords
       from {n}_timeseries.location l
-      JOIN {nwtbl} mt on mt.well_id = l.locationkey
+      JOIN {nwtbl} mt on mt.well_id::int = l.locationkey
       JOIN {n}_timeseries.timeseries t on t.locationkey = l.locationkey
       JOIN {n}_timeseries.parameter p on p.parameterkey = t.parameterkey
       JOIN {n}_timeseries.timeseriesvaluesandflags tsv on tsv.timeserieskey = t.timeserieskey
@@ -51,13 +51,14 @@ def settimeseriesstats(engine, tbl, nwtbl):
     """
     res = pd.read_sql(strsql, con)
     for id, row in res.iterrows():
+        print(f"update timewindow well_id {row['well_id']}")
         strsql = f"""update {nwtbl} set 
                     start_date = '{row['mindate']}', 
                     end_date = '{row['maxdate']}',
                     records = {row['nrecords']} 
-                    where well_id = {row['well_id']}"""
-        engine.execute(strsql)
-
+                    where well_id::int = {row['well_id']}"""
+        with engine.begin() as connection:
+            connection.execute(text(strsql))
 
 def test():
     cf = r"C:\develop\extensometer\connection_online.txt"
