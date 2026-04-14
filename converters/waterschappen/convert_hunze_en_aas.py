@@ -1,6 +1,4 @@
 from pathlib import Path
-from glob import glob
-import subprocess
 
 import pandas as pd
 import numpy as np
@@ -63,18 +61,25 @@ selectie["onderkant filter (m-mv)"] = (
     selectie["onderkant filter (m-mv)"].str.replace(",", ".").astype(float)
 )
 
-basedir = Path(
-    "p:/11207812-somers-ontwikkeling/3-somers_development/QSOMERS/Handmatige uitvraag 2026/handmatige_uitvraag_bestanden/HunzeEnAas"
-)
+basedir = Path("p:/11207812-somers-ontwikkeling/3-somers_development/QSOMERS/")
 
 # code peilbuis is name
 # uiteindelijk moet GWM toegevoegd worden aan de name
 # Selecteren welke kolom overeenkomt met wat
 # filterstelling (m tov Maaiveld) opsplitsen in top en bottom filter
-# data_dir = Path(
-#     r"P:\11207812-somers-ontwikkeling\database_grondwater\handmatige_uitvraag_bestanden\HunzeenAas\Export"
-# )
-ontvangen_dir = basedir.joinpath("ontvangen", "Export levering 2")
+ontvangen_dir = basedir.joinpath(
+    "Handmatige uitvraag 2026",
+    "handmatige_uitvraag_bestanden",
+    "HunzeEnAas",
+    "ontvangen",
+    "Export levering 2",
+)
+datadir_2024 = basedir.joinpath(
+    "Handmatige uitvraag 2024",
+    "handmatige_uitvraag_bestanden",
+    "HunzeenAas",
+    "Export",
+)
 for i in range(len(name)):
     print(name[i])
     df = selectie.loc[selectie["Code peilbuis"] == name[i]]
@@ -104,26 +109,30 @@ for i in range(len(name)):
 
     n = "NL33.HL." + name[i] + ".PBF1"
 
-    try:
-        data = pd.read_csv(ontvangen_dir.joinpath(f"{n}.csv"), skiprows=1)
-        extra_2024_data_needed = True
-    except FileNotFoundError:
-        data = pd.read_csv(
-            basedir.joinpath("meetreeksen_van_2024_kalibratie", f"{n}.csv"), skiprows=1
-        )
-        extra_2024_data_needed = False
-        # data = data.iloc[:, [0, 2, 3]]    
+    data = pd.read_csv(datadir_2024.joinpath(f"{n}.csv"), skiprows=1)
 
-    data = pd.concat([data.iloc[:,0], data.filter(regex="Momentaan")], axis=1)
+    data = pd.concat([data.iloc[:, 0], data.filter(regex="Momentaan")], axis=1)
     data = data.mask(data == -999)
-    data = data.dropna(axis=1, how='all')
+    data = data.dropna(axis=1, how="all")
 
-    if extra_2024_data_needed:
-        data_2024 = pd.read_csv(rf"p:\11207812-somers-ontwikkeling\3-somers_development\QSOMERS\Handmatige uitvraag 2024\handmatige_uitvraag_bestanden\HunzeenAas\Export\{n}.csv", skiprows=1)
-        data_final = pd.concat([data_2024, data])
-        data_final.drop_duplicates()
+    try:
+        data_2026 = pd.read_csv(ontvangen_dir.joinpath(f"{n}.csv"), skiprows=1)
+        data_2026 = pd.concat(
+            [data_2026.iloc[:, 0], data_2026.filter(regex="Momentaan")], axis=1
+        )
+        data_2026 = data_2026.mask(data_2026 == -999)
+        data_2026 = data_2026.dropna(axis=1, how="all")
+        data_2026 = data_2026.rename(
+            columns={
+                "WATHTE [mNAP]_ts_Momentaan.F": "WATHTE [mNAP]_Momentaan.F",
+                "WATHTE [mNAP]_ts_Momentaan.P": "WATHTE [mNAP]_Momentaan.P",
+            }
+        )
+        data = pd.concat([data, data_2026])
+        data.drop_duplicates(inplace=True)
+    except FileNotFoundError:
+        print(f"File {n} not found for 2026 calibration")
 
-        # data = data[mask]
     data.columns = ["datumtijd", "grondwaterstand (m NAP)"]
     data["grondwaterstand (m NAP)"] = data["grondwaterstand (m NAP)"]
     data["datumtijd"] = pd.to_datetime(data["datumtijd"])
@@ -132,51 +141,17 @@ for i in range(len(name)):
         data["grondwaterstand (m NAP)"] > -100
     )
 
-    # path_out = f"P:/11207812-somers-ontwikkeling/database_grondwater/handmatige_uitvraag_bestanden/HunzeenAas/bewerkt/GWM_{name[i]}.txt"
-    path_out = basedir.joinpath("bewerkt", f"GWM_{name[i]}.txt")
+    data = data.set_index("datumtijd")
+    data = data.dropna()
+
+    path_out = basedir.joinpath(
+        "Handmatige uitvraag 2026",
+        "handmatige_uitvraag_bestanden",
+        "HunzeEnAas",
+        "bewerkt",
+        f"GWM_{name[i]}.txt",
+    )
     with open(path_out, "w") as fp:
         fp.write(header)
 
-    data.to_csv(path_out, mode="a", sep=";", index=False, header=False)
-
-
-###########################################################################
-# 2024 kalibratie data
-###########################################################################
-
-# basedir_2024 = Path(
-#     "p:/11207812-somers-ontwikkeling/3-somers_development/QSOMERS/Handmatige uitvraag 2024/handmatige_uitvraag_bestanden/HunzeenAas"
-# )
-
-# ontvangen_dir_2024 = basedir_2024.joinpath("Export")
-
-# list_of_2024_wells_for_2026_dataset = pd.read_csv(
-#     r"p:\11207812-somers-ontwikkeling\3-somers_development\QSOMERS\Handmatige uitvraag 2026\handmatige_uitvraag_bestanden\HunzeEnAas\lijst_bestandsnamen_2024_2026.csv"
-# )
-
-# data_2024_for_2026_calibration = (
-#     list_of_2024_wells_for_2026_dataset["Bestandsnaam 2024"]
-#     .where(
-#         list_of_2024_wells_for_2026_dataset["Bestandsnaam 2024 Aanwezig in 2026?"]
-#         == False
-#     )
-#     .dropna()
-# )
-
-# # files = glob(str(ontvangen_dir_2024.joinpath("*.csv")))
-
-# files = ontvangen_dir_2024.glob("*.csv")
-
-# n = 0
-
-# for file in files:
-#     print(file.stem)
-
-#     if file.stem in data_2024_for_2026_calibration.values.tolist():
-#         """
-#         read the files that are not in the 2026 calibration folder
-#         """
-#         subprocess.call(["cp ", "-l"])
-#         n += 1
-
-# print(n)
+    data.to_csv(path_out, mode="a", sep=";", index=True, header=False)
