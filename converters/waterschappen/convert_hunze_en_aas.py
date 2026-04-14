@@ -2,6 +2,41 @@ from pathlib import Path
 
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+
+
+def set_xaxis_datelabels(ax):
+
+    # maj_loc = mdates.MonthLocator(bymonth=np.arange(1, 12, 3))
+    maj_loc = mdates.AutoDateLocator(minticks=2, maxticks=7)
+    ax.xaxis.set_major_locator(maj_loc)
+
+    # horizontal labels
+    ax.xaxis.set_tick_params(rotation=0)
+
+    for label in ax.get_xticklabels():
+        label.set_horizontalalignment("center")
+
+    zfmts = ["", "%b\n%Y", "%b", "%b-%d", "%H:%M", "%H:%M"]
+    offset_formats = [
+        "",
+        "%Y",
+        "%b %Y",
+        "%d %b %Y",
+        "%d %b %Y",
+        "%d %b %Y %H:%M",
+    ]
+
+    maj_fmt = mdates.ConciseDateFormatter(maj_loc, show_offset=False)
+    maj_fmt.zero_formats = zfmts
+    maj_fmt.offset_formats = offset_formats
+
+    ax.xaxis.set_major_formatter(maj_fmt)
+    ax.figure.autofmt_xdate(rotation=0, ha="center")
+
+    # ax.xaxis.set_major_formatter(formatter)
+    ax.xaxis.set_minor_locator(mdates.MonthLocator())
 
 
 def fill_ja_nee(value):
@@ -80,6 +115,15 @@ datadir_2024 = basedir.joinpath(
     "HunzeenAas",
     "Export",
 )
+
+figdir = basedir.joinpath(
+    "Handmatige uitvraag 2026",
+    "handmatige_uitvraag_bestanden",
+    "HunzeEnAas",
+    "bewerkt",
+    "figuren",
+)
+
 for i in range(len(name)):
     print(name[i])
     df = selectie.loc[selectie["Code peilbuis"] == name[i]]
@@ -142,7 +186,33 @@ for i in range(len(name)):
     )
 
     data = data.set_index("datumtijd")
-    data = data.dropna()
+    # data = data.dropna()
+
+    data.index = pd.to_datetime(data.index, dayfirst=True)
+
+    # calculate daily means
+    data = data.resample('D').mean()
+
+    # make a quick figure
+    fig, ax = plt.subplots()
+
+    ax.plot(data.index, data)
+
+    ax.set_xlim(data.first_valid_index(), data.last_valid_index())
+    ax.grid()
+    ax.set_ylabel("Slootwaterstand (cm t.o.v. NAP)")
+    ax.set_title(f"{n}")
+
+    set_xaxis_datelabels(ax)
+
+    # plt.show()
+    plt.savefig(
+        figdir.joinpath(f"Grondwaterstand {n}.png"),
+        bbox_inches="tight",
+        dpi=300,
+    )
+
+    plt.close()
 
     path_out = basedir.joinpath(
         "Handmatige uitvraag 2026",
