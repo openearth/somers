@@ -16,6 +16,8 @@ gwm_files = glob(str(ontvangen_dir.joinpath("GWM_*.txt")))
 # %% gwm-files
 for path in gwm_files:
 
+    print(f"Working on {Path(path).stem}")
+
     with open(path, "r", encoding="utf-8", errors="replace") as f:
         header_lines = [next(f).rstrip("\n") for _ in range(22)]
 
@@ -24,6 +26,7 @@ for path in gwm_files:
     header = header.replace(
         "> datumtijd (dd-mm-yyyy HH:MM:SS)", "> datumtijd (dd-mm-yyyy)"
     )
+    header = header.replace("naam meetpunt", "naam_meetpunt")
 
     values = pd.read_csv(
         path,
@@ -65,6 +68,8 @@ swm_files = ontvangen_dir.glob("SWM_*.txt")
 
 for path in swm_files:
 
+    print(f"Working on {Path(path).stem}")
+
     # header_lines = pd.read_csv(path, header=None, on_bad_lines="skip").loc[:5]
     # header = "\n".join(header_lines[0].astype(str)) + "\n"
 
@@ -75,11 +80,12 @@ for path in swm_files:
     header = header.replace(
         "> datumtijd (dd-mm-yyyy HH:MM:SS)", "> datumtijd (dd-mm-yyyy)"
     )
+    header = header.replace("naam meetpunt", "naam_meetpunt")
 
     values = pd.read_csv(
         path,
         sep=";",
-        skiprows=21,
+        skiprows=6,
         header=None,
         names=["datumtijd", "grondwaterstand"],
         dayfirst=True,
