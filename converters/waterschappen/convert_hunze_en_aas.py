@@ -224,4 +224,6 @@ for i in range(len(name)):
     with open(path_out, "w") as fp:
         fp.write(header)
 
+    data.index = data.index.strftime("%d-%m-%Y")
+
     data.to_csv(path_out, mode="a", sep=";", index=True, header=False)
