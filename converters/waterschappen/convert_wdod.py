@@ -68,7 +68,7 @@ for sheet_name, df in sheets.items():
             for t, v in zip(g["datumtijd"], g["waterhoogte"]):
                 t_str = pd.Timestamp(t).strftime("%d-%m-%Y")
                 v_str = fmt_decimal_comma(v, ndigits=2)
-                f.write(f"{t_str};{v_str}\n")
+                f.write(f"{t_str};{v}\n")
 
         print(f"Wrote {path_out} (sheet: {sheet_name}, rows: {len(g)})")
 
