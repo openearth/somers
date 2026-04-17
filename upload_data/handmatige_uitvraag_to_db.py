@@ -214,7 +214,7 @@ def check_waterboard_exists(wb_name):
 
 
 # set reference to config file
-local = True
+local = False
 if local:
     # fc = r"C:\develop\somers\configuration_local.txt"
     fc = r'C:\projecten\groundwater\config_local_qsomers.txt'
