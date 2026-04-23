@@ -196,3 +196,114 @@ for path in swm_files:
         index=False,
         header=False,
     )
+
+# %% read data from previous dataverzameling
+
+basedir_2024 = Path(
+    "p:/11207812-somers-ontwikkeling/3-somers_development/QSOMERS/Handmatige uitvraag 2024/handmatige_uitvraag_bestanden/WSHD"
+)
+
+ontvangen_dir = basedir_2024.joinpath("Deltares - grondwater in veen weide")
+
+# gwm_files = ontvangen_dir.glob("GWM_*.txt")
+files = ontvangen_dir.joinpath("Meetreeksen.xlsx")
+name = "B43F0140_1"
+x = 93128.8
+y = 419435.1
+filter_depth_top = -4.18
+filter_depth_bottom = -5.18
+maaiveldhoogte = -1.31
+zomerpeil = -2.35
+winterpeil = -2.35
+
+# %% gwm-files
+
+new_lines = {
+    "naam_meetpunt": name,
+    "x-coor": x,
+    "y-coor": y,
+    "maaiveld (m NAP)": maaiveldhoogte,
+    "zomer streefpeil (m NAP)": zomerpeil,
+    "winter streefpeil (m NAP)": winterpeil,
+}
+# fill_values.update(new_lines)
+header = gwm_header_format.format(**new_lines)
+
+gwm_values = pd.read_excel(
+    files,
+    sheet_name="Grondwaterreeks",
+    skiprows=[1, 2, 3, 4, 5],
+    usecols=["MET/MEST", "Grondwaterstand (gecorrigeerd)"],
+)
+
+gwm_values["MET/MEST"] = pd.to_datetime(gwm_values["MET/MEST"], dayfirst=True)
+
+gwm_values.columns = ["datumtijd", "grondwaterstand"]
+
+gwm_values = gwm_values.set_index("datumtijd")
+
+gwm_values = gwm_values.resample("D").mean()
+
+gwm_values.index = gwm_values.index.strftime("%d-%m-%Y")
+
+gwm_values["grondwaterstand"] = gwm_values["grondwaterstand"].round(2)
+
+path_out = basedir.joinpath("bewerkt", "GWM_" + name + ".txt")
+with open(path_out, "w") as fp:
+    fp.write(header)
+
+gwm_values.reset_index().to_csv(
+    path_out,
+    mode="a",
+    sep=";",
+    index=False,
+    header=False,
+)
+
+# %% hier gebleven, nog even de swm uitschrijven
+# gwm_files = ontvangen_dir.glob("GWM_*.txt")
+files = ontvangen_dir.joinpath("Meetreeksen.xlsx")
+name = "HW_CIT_03375ST_boven"
+x = 96771.5
+y = 418325
+
+# %% gwm-files
+
+new_lines = {
+    "naam_meetpunt": location,
+    "x-coor": x,
+    "y-coor": y,
+}
+# fill_values.update(new_lines)
+header = swm_header_format.format(**new_lines)
+
+swm_values = pd.read_excel(
+    files,
+    sheet_name="Oppervlaktewater registratie",
+    skiprows=[1, 2, 3, 4, 5],
+    usecols=["MET/MEST", "H.meting"],
+)
+
+swm_values["MET/MEST"] = pd.to_datetime(swm_values["MET/MEST"], dayfirst=True)
+
+swm_values.columns = ["datumtijd", "slootwaterstand"]
+
+swm_values = swm_values.set_index("datumtijd")
+
+swm_values = swm_values.resample("D").mean()
+
+swm_values.index = swm_values.index.strftime("%d-%m-%Y")
+
+swm_values["slootwaterstand"] = swm_values["slootwaterstand"].round(2)
+
+path_out = basedir.joinpath("bewerkt", "SWM_" + name + ".txt")
+with open(path_out, "w") as fp:
+    fp.write(header)
+
+swm_values.reset_index().to_csv(
+    path_out,
+    mode="a",
+    sep=";",
+    index=False,
+    header=False,
+)
