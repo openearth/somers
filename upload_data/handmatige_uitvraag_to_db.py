@@ -36,6 +36,7 @@ import glob
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
+from pathlib import Path
 # Get the directory of the current script
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -48,8 +49,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 sys.path.append(project_root)
 
 # third party packages
-from sqlalchemy.sql.expression import update
-from sqlalchemy import exc, func, ARRAY, Float
+from sqlalchemy import ARRAY,text
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import DOUBLE_PRECISION
 # local procedures
@@ -76,15 +76,6 @@ from ts_helpers.ts_helpers_waterschappen import (
     stimestep,
 )
 
-
-def read_config(af):
-    # Default config file (relative path, does not work on production, weird)
-    # Parse and load
-    cf = configparser.ConfigParser()
-    cf.read(af)
-    return cf
-
-
 def latest_entry(skey):
     """function to find the lastest timestep entry per skey.
     input = skey
@@ -93,8 +84,9 @@ def latest_entry(skey):
         where timeserieskey={s};""".format(
         s=skey
     )
-    r = engine.execute(stmt).fetchall()[0][0]
-    r = pd.to_datetime(r)
+    with engine.connect() as conn:
+        r = conn.execute(text(stmt)).fetchall()[0][0]
+        r = pd.to_datetime(r)
     return r
 
 
@@ -171,7 +163,7 @@ def extract_info_from_text_file(filename):
     data = {}
     for line in filtered_lines:
         if ":" in line:  # Check if the line contains a colon
-            key, value = line[1:].split(":")
+            key, value = line[1:].split(":", 1)  # Split on first colon only
             value = value.strip()  # Remove leading/trailing spaces
             data[key.strip()] = (
                 value if value else np.nan
@@ -185,43 +177,54 @@ def extract_info_from_text_file(filename):
 def find_locationkey():
     # find the max locationkey which is currently stored in the database
     stmt = """select max(locationkey) from waterschappen_timeseries.location;"""
-    r = engine.execute(stmt).fetchall()[0][0]
+    with engine.connect() as conn:
+        r = conn.execute(text(stmt)).fetchall()[0][0]
     return r
 
 
 def find_if_stored(name):
-    # find the max locationkey which is currently stored in the database
-    try:
-        stmt = """select locationkey from waterschappen_timeseries.location
-        where name = '{n}';""".format(
-            n=name
-        )
-        r = engine.execute(stmt).fetchall()[0][0]
-        return r, True  # mean yes / True it is stored
-    except:
-        return False
+    """Return locationkey when the location exists, otherwise None."""
+    stmt = text(
+        """select locationkey from waterschappen_timeseries.location
+        where name = :name
+        limit 1;"""
+    )
+    with engine.connect() as conn:
+        return conn.execute(stmt, {"name": name}).scalar()
+
+
+def check_waterboard_exists(wb_name):
+    """
+    Check if a waterboard already has data in the location table.
+    
+    Args:
+        wb_name (str): Waterboard name (e.g., 'AGV', 'HunzeEnAas')
+    
+    Returns:
+        bool: True if waterboard has existing locations, False otherwise
+        int: Count of existing locations for this waterboard
+    """
+    stmt = text(
+        """select count(*) from waterschappen_timeseries.location
+        where name like :pattern;"""
+    )
+    with engine.connect() as conn:
+        count = conn.execute(stmt, {"pattern": f"{wb_name}_%"}).scalar()
+    return count > 0, count
 
 
 # set reference to config file
 local = False
 if local:
-    fc = r"C:\projecten\grondwater_monitoring\nobv\2023\connection_local_somers.txt"
+    # fc = r"C:\develop\somers\configuration_local.txt"
+    fc = r'C:\projecten\groundwater\config_local_qsomers.txt'
 else:
-    fc = r"C:\projecten\grondwater_monitoring\nobv\2023\connection_online_qsomers.txt"
+    # fc = r"C:\develop\somers\configuration_somers.txt"
+    fc = r'C:\projecten\groundwater\config_online_qsomers.txt'
 session, engine = establishconnection(fc)
 
-# manual input, give path to the root folders to loop over
-path_1 = r"P:\11207812-somers-ontwikkeling\database_grondwater\handmatige_uitvraag_bestanden\Rivierenland"
-path_2 = r'P:\11207812-somers-ontwikkeling\database_grondwater\handmatige_uitvraag_bestanden\Delfland\SOMERS_DATA' #heel veel data maar bijna geen locatie komt terug voor de analyse
-path_3 = r"P:\11207812-somers-ontwikkeling\database_grondwater\handmatige_uitvraag_bestanden\HDSR\geschikte_data"
-path_4 = r"P:\11207812-somers-ontwikkeling\database_grondwater\handmatige_uitvraag_bestanden\AGV\bewerkt"  # gebruikt spaties als sep in de GWM maar niet in de SWM
-path_5 = r'P:\11207812-somers-ontwikkeling\database_grondwater\handmatige_uitvraag_bestanden\HunzeenAas\bewerkt' #datum tijd notatie klopt nog niet
-path_6 = r"P:\11207812-somers-ontwikkeling\database_grondwater\handmatige_uitvraag_bestanden\Wetterskip\bewerkt" 
-path_7 = r'P:\11207812-somers-ontwikkeling\database_grondwater\handmatige_uitvraag_bestanden\HHSK\bewerkt' # (string replace has to be on to work with this data)
-
-# Create a list of paths
-paths = [path_6]
-wb_name = 'Wetterskip' #sorry, this is a manual change as you have to tick the paths induvially to check for errors..
+base = Path(r"P:\11207812-somers-ontwikkeling\3-somers_development\QSOMERS\Handmatige uitvraag 2026\handmatige_uitvraag_bestanden")
+wb_name_list = ["AGV", "HunzeEnAas", "Rijnland", "Rivierenland", "WDOD", "WSHD", "Wetterskip"] #add WB which are ready to be processed
 
 # assigning parameters, either grondwaterstand or slootwaterpeil
 # zoetwaterstijghoogtes
@@ -263,31 +266,32 @@ timeseries = ["datetime", "scalarvalue"]
 
 # %%
 # Loop over each path
-for root in paths:
-    for root, subdirs, files in os.walk(root):
+for wb_name in wb_name_list:
+    exists, count = check_waterboard_exists(wb_name)
+    if exists:
+        print(f"{wb_name}: Already has {count} locations in database")
+        # continue  # Skip this waterboard, need to change if one row needs to be updated
+    else:
+        print(f"{wb_name}: No existing data, starting fresh")
+    
+    path = base / wb_name / "bewerkt"
+    for root, subdirs, files in os.walk(path):
         for count, file in enumerate(files):
             if file.lower().endswith(".txt"):
-                name = os.path.basename(file).split("_", 1)[1].rsplit(".", 1)[0]
-                # wb_name = os.path.basename(root)
+                name = os.path.basename(file).rsplit(".", 1)[0]
                 name = name.replace("[", "").replace("]", "")
-                name = wb_name + "_" + name
-                data = os.path.basename(file).split("_", 1)[
-                    0
-                ]  # find in name it is GWM or SWM
+                name = wb_name + "_" + name #set correct naming convention
+                data = os.path.basename(file).split("_", 1)[0]  # find in name it is GWM or SWM
+
                 nrrows, colnames, xycols, datum = skiprows(os.path.join(root, file))
-                y = find_if_stored(name)
-                print(y)
+                locationkey = find_if_stored(name)
+                is_new_location = locationkey is None
 
-                if y == False:
-                    x = find_locationkey()
-                    if x is None:
-                        locationkey = 0
-                    else:
-                        locationkey = x + 1
+                if is_new_location:
+                    max_key = find_locationkey()
+                    locationkey = (max_key or 0) + 1
                     print("Location not stored yet:", name)
-
                 else:
-                    locationkey = y[0]
                     print("location already stored:", name)
 
                 fskey = loadfilesource(os.path.join(root, file), fc, f"{name}_{data}")
@@ -298,8 +302,8 @@ for root in paths:
                     header=None,
                     names=colnames,
                 )
-                # print(dfx)
-                if data == "SWM":
+
+                if data == "SWM": #distinguish between SWM and GWM  as they have different properties 
                     df = extract_info_from_text_file(os.path.join(root, file))
                     df.columns = new_loc_swm
 
@@ -312,9 +316,9 @@ for root in paths:
                     df["locationkey"] = locationkey
                     df["epsgcode"] = 28992
                     df["filesourcekey"] = fskey[0][0]
-                    df['name'] = str(wb_name)+'_' + df['name'].astype(str)
+                    df['name'] = name
 
-                    if y == False:
+                    if is_new_location:
                         df.to_sql(
                             "location",
                             engine,
@@ -322,10 +326,13 @@ for root in paths:
                             index=None,
                             if_exists="append",
                         )
-                        stmt = """update {s}.{t} set geom = st_setsrid(st_point(x,y),epsgcode) where geom is null;""".format(
-                            s="waterschappen_timeseries", t="location"
+                        stmt = text(
+                            "update waterschappen_timeseries.location"
+                            " set geom = st_setsrid(st_point(x,y),epsgcode)"
+                            " where geom is null and locationkey = :lkey"
                         )
-                        engine.execute(stmt)
+                        with engine.begin() as conn:
+                            conn.execute(stmt, {"lkey": locationkey})
 
                     skeyz = sserieskey(
                         fc, pkeyswm, locationkey, fskey[0], timestep="nonequidistant"
@@ -370,7 +377,6 @@ for root in paths:
                     dfx = dfx.drop_duplicates()
                     print(r, skeyz)
                     if r != dfx["datetime"].iloc[-1]:
-                        print('yes')
                         dfx["timeserieskey"] = skeyz
                         dfx["flags"] = flag
                         dfx.to_sql(
@@ -402,10 +408,9 @@ for root in paths:
                     locationtable["locationkey"] = locationkey
                     locationtable["epsgcode"] = 28992
                     locationtable["filesourcekey"] = fskey[0][0]
-                    locationtable['name'] = str(wb_name)+'_' + locationtable['name'].astype(str)
-                    print('here now')
+                    locationtable['name'] = name
 
-                    if y == False:
+                    if is_new_location:
                         locationtable.to_sql(
                             "location",
                             engine,
@@ -413,10 +418,13 @@ for root in paths:
                             index=None,
                             if_exists="append",
                         )
-                        stmt = """update {s}.{t} set geom = st_setsrid(st_point(x,y),epsgcode) where geom is null;""".format(
-                            s="waterschappen_timeseries", t="location"
+                        stmt = text(
+                            "update waterschappen_timeseries.location"
+                            " set geom = st_setsrid(st_point(x,y),epsgcode)"
+                            " where geom is null and locationkey = :lkey"
                         )
-                        engine.execute(stmt)
+                        with engine.begin() as conn:
+                            conn.execute(stmt, {"lkey": locationkey})
 
                         metadata = df[cols_metatable]
                         metadata = metadata.rename(
@@ -481,7 +489,7 @@ for root in paths:
                             dfx["datetime"] = pd.to_datetime(
                                 dfx["datetime"], format="%d-%m-%Y %H:%M"
                             )
-                    dfx['scalarvalue'] = dfx['scalarvalue'].str.replace(",", ".")
+                    # dfx['scalarvalue'] = dfx['scalarvalue'].str.replace(",", ".")
                     dfx["scalarvalue"] = dfx["scalarvalue"].astype("float64")
                     dfx = dfx.dropna()
 
