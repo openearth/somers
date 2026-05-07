@@ -26,20 +26,23 @@
 
 # set of functions that gets data for every location available regarding a list of parameters:
 # - for every location querys (spatial query) the input parcels
-
+#%%
 # import math
 import time
 
 # import StringIO
 import os
 
-from ts_helpers.ts_helpers_bro import establishconnection, testconnection
+from sqlalchemy import text
+
+from ts_helpers.ts_helpers import establishconnection, testconnection
 from db_helpers import preptable
 
 
 # ----- set various generic (location dependend) data in metadata table (xy from well)
 def assign_parcelvalues(engine, tbl):
     """Update metadata table with the input_parcels by performing a spatial query
+    2026: input_parcels_2022 is deprecated, the new function uses b_2024_ahn3
 
     Args:
         cf  (string): link to connection file with credentials
@@ -52,7 +55,7 @@ def assign_parcelvalues(engine, tbl):
 
     strsql = f"""select 
         l.well_id, 
-        ip.aan_id, 
+        ip.name as aan_id, 
         type_peilb, 
         ROUND(zomerpeil_::numeric,2), 
         ROUND(winterpeil::numeric,2), 
@@ -61,8 +64,9 @@ def assign_parcelvalues(engine, tbl):
         ROUND(y_coord::numeric,2) 
         from {tbl} l 
         join {loctable} loc on loc.locationkey = l.well_id
-        join input_parcels_2022 ip on st_within(loc.geom, ip.geom)"""
-    locs = engine.execute(strsql).fetchall()
+        join b_2024_ahn3 ip on st_within(loc.geom, ip.geom)"""
+    with engine.begin() as connection:
+        locs = connection.execute(text(strsql)).fetchall()
     for i in range(len(locs)):
         lockey = locs[i][0]
         aan_id = locs[i][1]
@@ -102,7 +106,8 @@ def assign_parcelvalues(engine, tbl):
                             winter_stage_m_nap = {winterpeil}""".replace(
                 "None", "Null"
             )
-            engine.execute(strsqlu)
+            with engine.begin() as connection:
+                connection.execute(text(strsql))
         except Exception as e:
             # Handle the conflict (e.g., log the error or ignore it)
             print(f"Error: {e}. {lockey}.")
@@ -112,3 +117,5 @@ def test():
     cf = r"C:\develop\extensometer\connection_online.txt"
     session, engine = establishconnection(cf)
     tbl = "bro_timeseries.location_metadata2"
+
+# %%

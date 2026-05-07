@@ -42,7 +42,7 @@ import rasterio
 from sqlalchemy import text 
 ## Utils WCS [from fast]
 from utils_wcs import *
-from ts_helpers.ts_helpers_bro import establishconnection, testconnection
+from ts_helpers.ts_helpers import establishconnection, testconnection
 
 # globals
 geoserver_url_2024 = "https://service.pdok.nl/rws/ahn/wcs/v1_0"

@@ -23,7 +23,7 @@
 # programming tools in an open source, version controlled environment.
 # Sign up to recieve regular updates of this function, and to contribute
 # your own tools.
-
+#%%
 ## some helper functions
 # Add the parent directory to the system path
 import os
@@ -31,8 +31,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from sqlalchemy import text
-from ts_helpers.ts_helpers_bro import establishconnection
-from ts_helpers import ts_helpers
+from ts_helpers.ts_helpers import establishconnection
 from db_helpers import tablesetup,create_location_metadatatable
 import assign_soiltype
 import assign_parcelvalues
@@ -40,9 +39,10 @@ import assign_ahn4
 import assign_top10
 import assign_timeseriesstats
 
+
 # globals
-cf = r"C:\projecten\grondwater_monitoring\nobv\2023\connection_online_qsomers.txt"
-cf = r"C:\develop\somers\configuration_somers.txt"
+cf = r"C:\projecten\groundwater\config_online_qsomers.txt"
+# cf = r"C:\develop\somers\configuration_somers.txt"
 
 session, engine = establishconnection(cf)
 
@@ -111,3 +111,5 @@ assign_top10.assign_t10(engine, tbl, nwtbl)
 
 # 7 assign timeseries timewindow and number of records
 assign_timeseriesstats.settimeseriesstats(engine, tbl, nwtbl)
+
+# %%

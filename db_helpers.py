@@ -30,7 +30,7 @@ Created on Thu Jan  7 14:49:58 2021
 # programming tools in an open source, version controlled environment.
 # Sign up to recieve regular updates of this function, and to contribute
 # your own tools.
-
+#%%
 from ts_helpers.ts_helpers import establishconnection, testconnection
 from sqlalchemy import text
 
@@ -39,8 +39,8 @@ from sqlalchemy import text
 # dictionary below is used to setup the mastertable that collects all data from the various schema's into 1 table
 def tablesetup():
     dctcolumns = {}
-    dctcolumns["well_id"] = "text"
-    dctcolumns["aan_id"] = "integer"
+    dctcolumns["well_id"] = "integer"
+    dctcolumns["aan_id"] = "text"
     dctcolumns["name"] = "text"
     dctcolumns["transect"] = "integer"
     dctcolumns["parcel_type"] = "text"  # is er een maatregel ja/nee (standaard is ref)
@@ -125,3 +125,5 @@ def create_location_metadatatable(cf, tbl, dctcolumns):
     finally:
         engine.dispose()
     return
+
+# %%
