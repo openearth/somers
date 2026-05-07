@@ -33,7 +33,7 @@ import time
 # import StringIO
 import os
 
-from ts_helpers.ts_helpers import establishconnection, testconnection
+from ts_helpers.ts_helpers_bro import establishconnection, testconnection
 from db_helpers import preptable
 
 

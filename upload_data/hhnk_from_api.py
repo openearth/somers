@@ -245,35 +245,33 @@ while response["next"]:
                                         df["datetime"] = df["datetime"].dt.tz_convert("Europe/Amsterdam")
 
                                         r = latest_entry(skeygws)
-                                        print(r)
-                                        if r != (df["datetime"].iloc[-1]).dt.tz_convert("Europe/Amsterdam"):
-                                            df.drop(
-                                                columns=[
-                                                    "validation_code",
-                                                    "comment",
-                                                    "time",
-                                                    "last_modified",
-                                                    "detection_limit",
-                                                    "flag",
-                                                ],
-                                                inplace=True,
-                                            )
-                                            df = df.rename(
-                                                columns={"value": "scalarvalue"}
-                                            )  # change column
-                                            df["timeserieskey"] = skeygws
-                                            df["flags"] = flagkey
-                                            df.to_sql(
-                                                "timeseriesvaluesandflags",
-                                                engine,
-                                                index=False,
-                                                if_exists="append",
-                                                schema="hhnk_timeseries",
-                                            )
-                                            print(
-                                                "updated: ",
-                                                response["results"][i]["filters"][j][
-                                                    "code"
-                                                ],
-                                            )
+                                        if r != (df["datetime"].iloc[-1]).replace(
+                                            tzinfo=None
+                                        ):
+                                            try:
+                                                df.drop(
+                                                    columns=[
+                                                        "validation_code",
+                                                        "comment",
+                                                        "time",
+                                                        "last_modified",
+                                                        "detection_limit",
+                                                        "flag",
+                                                    ],
+                                                    inplace=True,
+                                                )
+                                                df = df.rename(
+                                                    columns={"value": "scalarvalue"}
+                                                )  # change column
+                                                df["timeserieskey"] = skeygws
+                                                df["flags"] = flagkey
+                                                df.to_sql(
+                                                    "timeseriesvaluesandflags",
+                                                    engine,
+                                                    index=False,
+                                                    if_exists="append",
+                                                    schema="hhnk_timeseries",
+                                                )
+                                            except:
+                                                continue
 # %%
