@@ -114,7 +114,7 @@ def create_location_metadatatable(cf, tbl, dctcolumns):
     session, engine = establishconnection(cf)
     try:
         nwtbl = tbl
-        strsql = f"create table if not exists {nwtbl} (well_id text primary key)"
+        strsql = f"create table if not exists {nwtbl} (well_id integer primary key)"
         with engine.connect() as conn:
             conn.execute(text(strsql))
             conn.commit()
