@@ -59,8 +59,8 @@ def assign_parcelvalues(engine, tbl):
         ROUND(summer_stage::numeric,2), 
         ROUND(winter_stage::numeric,2), 
         ROUND(width::numeric,2), 
-        ROUND(x::numeric,2), 
-        ROUND(y::numeric,2) 
+        ROUND(ip.x::numeric,2), 
+        ROUND(ip.y::numeric,2) 
         from {tbl} l 
         join {loctable} loc on loc.locationkey = l.well_id
         join b_2024_ahn3 ip on st_within(loc.geom, ip.geom)"""
@@ -69,12 +69,11 @@ def assign_parcelvalues(engine, tbl):
     for i in range(len(locs)):
         lockey = locs[i][0]
         aan_id = locs[i][1]
-        type_peilb = locs[i][2]
-        summer_stage = locs[i][3]
-        winter_stage = locs[i][4]
-        width = locs[i][5]
-        x = locs[i][6]
-        y = locs[i][7]
+        summer_stage = locs[i][2]
+        winter_stage = locs[i][3]
+        width = locs[i][4]
+        x = locs[i][5]
+        y = locs[i][6]
 
         try:
             strsqlu = f"""insert into {tbl} (
