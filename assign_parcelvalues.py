@@ -56,12 +56,11 @@ def assign_parcelvalues(engine, tbl):
     strsql = f"""select 
         l.well_id, 
         ip.name as aan_id, 
-        type_peilb, 
-        ROUND(zomerpeil_::numeric,2), 
-        ROUND(winterpeil::numeric,2), 
-        ROUND(sloot_afst::numeric,2), 
-        ROUND(x_coord::numeric,2), 
-        ROUND(y_coord::numeric,2) 
+        ROUND(summer_stage::numeric,2), 
+        ROUND(winter_stage::numeric,2), 
+        ROUND(width::numeric,2), 
+        ROUND(x::numeric,2), 
+        ROUND(y::numeric,2) 
         from {tbl} l 
         join {loctable} loc on loc.locationkey = l.well_id
         join b_2024_ahn3 ip on st_within(loc.geom, ip.geom)"""
@@ -71,17 +70,16 @@ def assign_parcelvalues(engine, tbl):
         lockey = locs[i][0]
         aan_id = locs[i][1]
         type_peilb = locs[i][2]
-        zomerpeil_ = locs[i][3]
-        winterpeil = locs[i][4]
-        sloot_afst = locs[i][5]
-        x_coord = locs[i][6]
-        y_coord = locs[i][7]
+        summer_stage = locs[i][3]
+        winter_stage = locs[i][4]
+        width = locs[i][5]
+        x = locs[i][6]
+        y = locs[i][7]
 
         try:
             strsqlu = f"""insert into {tbl} (
                             well_id,
                             aan_id, 
-                            parcel_type,
                             x_centre_parcel,
                             y_centre_parcel,
                             parcel_width_m,
@@ -89,21 +87,19 @@ def assign_parcelvalues(engine, tbl):
                             winter_stage_m_nap) 
                         VALUES ({lockey},
                                '{aan_id}',
-                               '{type_peilb}', 
-                                {x_coord},
-                                {y_coord},
-                                {sloot_afst},
-                                {zomerpeil_},
-                                {winterpeil})
+                                {x},
+                                {y},
+                                {width},
+                                {summer_stage},
+                                {winter_stage})
                         ON CONFLICT(well_id)
                         DO UPDATE SET   
                             aan_id = '{aan_id}', 
-                            parcel_type = '{type_peilb}',
-                            x_centre_parcel = {x_coord},
-                            y_centre_parcel = {y_coord},
-                            parcel_width_m = {sloot_afst},
-                            summer_stage_m_nap = {zomerpeil_},
-                            winter_stage_m_nap = {winterpeil}""".replace(
+                            x_centre_parcel = {x},
+                            y_centre_parcel = {y},
+                            parcel_width_m = {width},
+                            summer_stage_m_nap = {summer_stage},
+                            winter_stage_m_nap = {winter_stage}""".replace(
                 "None", "Null"
             )
             with engine.begin() as connection:
