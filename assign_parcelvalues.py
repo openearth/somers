@@ -51,10 +51,9 @@ def assign_parcelvalues(engine, tbl):
     Returns:
         ...
     """
-    loctable = ".".join([tbl.split(".")[0], tbl.split(".")[1].split("_")[0]])
 
     strsql = f"""select 
-        l.well_id, 
+        l.locationkey as well_id, 
         ip.name as aan_id, 
         ROUND(summer_stage::numeric,2), 
         ROUND(winter_stage::numeric,2), 
@@ -62,7 +61,6 @@ def assign_parcelvalues(engine, tbl):
         ROUND(ip.x::numeric,2), 
         ROUND(ip.y::numeric,2) 
         from {tbl} l 
-        join {loctable} loc on loc.locationkey = l.well_id
         join b_2024_ahn3 ip on st_within(loc.geom, ip.geom)"""
     with engine.begin() as connection:
         locs = connection.execute(text(strsql)).fetchall()
