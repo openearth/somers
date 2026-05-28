@@ -25,7 +25,7 @@
 # your own tools.
 
 ## some helper functions
-from ts_helpers.ts_helpers import establishconnection, testconnection
+from ts_helpers.ts_helpers_hhnk import establishconnection, testconnection
 from db_helpers import create_location_metadatatable
 import assign_soiltype
 import assign_parcelvalues

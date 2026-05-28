@@ -24,9 +24,17 @@
 # Sign up to recieve regular updates of this function, and to contribute
 # your own tools.
 
+#%%
 ## some helper functions
+# Add the parent directory to the system path
+import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+
 from ts_helpers.ts_helpers import establishconnection, testconnection
-from db_helpers import create_location_metadatatable
+from db_helpers import create_location_metadatatable, tablesetup
+from sqlalchemy import text
 import assign_soiltype
 import assign_parcelvalues
 import assign_ahn4
@@ -34,12 +42,12 @@ import assign_top10
 import assign_timeseriesstats
 
 # globals
-cf = r"C:\projecten\grondwater_monitoring\nobv\2023\connection_online_qsomers.txt"
+cf = r"C:\projecten\groundwater\config_online_qsomers.txt"
 # cf = r"C:\develop\extensometer\connection_online.txt"
 
 session, engine = establishconnection(cf)
 
-# -------------- section for BRO data
+# -------------- section for NOBV data
 # step 1. setup location_metadata table
 # step 2. fill with location data for selection of data
 # step 3. assign ahn4
@@ -51,7 +59,14 @@ session, engine = establishconnection(cf)
 # 1 setup metadata table (tbl should be new name)
 tbl = "nobv_timeseries.location"
 nwtbl = "nobv_timeseries.location_metadata2"
-create_location_metadatatable(cf, nwtbl)
+dctcolumns = tablesetup()
+# create_location_metadatatable(cf, nwtbl,dctcolumns)
+
+#location_metadata2 needs a primary key
+
+# strsql = f"""alter table {nwtbl} add primary key (well_id)"""
+# with engine.begin() as connection:
+#     connection.execute(text(strsql))
 
 # 2 BRO specific
 # this part is different for every source, since the data is not exactly the same
@@ -62,48 +77,64 @@ SELECT
 	st_x(geom),
 	st_y(geom),
 	altitude_msl as z_surface_level_m_nap,
-	tubetop as top_screen_m_mv,
-	tubebot as bot_screen_m_mv
+	tubetop as screen_top_m_sfl,
+	tubebot as screen_bot_m_sfl
 FROM nobv_timeseries.location
 order by locationkey
 """
-locs = engine.execute(strsql).fetchall()
-for i in range(len(locs)):
-    lockey = locs[i][0]
-    x = locs[i][1]
-    y = locs[i][2]
-    z = locs[i][3]
-    zt = locs[i][4]
-    zb = locs[i][5]
-    try:
-        strsql = f"""insert into {tbl} (well_id, x_well,y_well,z_surface_level_m_nap,top_screen_m_mv,bot_screen_m_mv) 
-                    VALUES ({lockey},{x},{y}, {z}, {zt},{zb})
-                    ON CONFLICT(well_id)
-                    DO UPDATE SET
-                    x_well = {x}, y_well = {y}, z_surface_level_m_nap = {z}, top_screen_m_mv = {zb}, bot_screen_m_mv = {zb}"""
-        engine.execute(strsql)
-    except Exception as e:
-        # Handle the conflict (e.g., log the error or ignore it)
-        print(f"Error: {e}. {lockey}.")
+with engine.begin() as connection:
+    locs = connection.execute(text(strsql)).fetchall()
 
-# create list to loop over
-rename_cols = [
-    "parcel_width_m",
-    "trenches",
-    "trench_depth_m_sfl",
-    "summer_stage_m_nap",
-    "winter_stage_m_nap",
-    "wis_distance_m",
-    "wis_depth_m_sfl",
-]
-for i in range(len(rename_cols)):
-    strsql = f"""
-    UPDATE nobv_timeseries.location_metadata2 m2
-    SET {rename_cols[i]} = m1.{rename_cols[i]}
-    FROM nobv_timeseries.location_metadata m1
-    WHERE m1.well_id = m2.well_id
-    """
-    engine.execute(strsql)
+
+strsql = text(f"""
+INSERT INTO {nwtbl}
+(well_id, x_well, y_well, z_surface_level_m_nap, screen_top_m_sfl, screen_bot_m_sfl)
+VALUES (:lockey, :x, :y, :z, :zt, :zb)
+ON CONFLICT (well_id)
+DO UPDATE SET
+    x_well = :x,
+    y_well = :y,
+    z_surface_level_m_nap = :z,
+    screen_top_m_sfl = :zt,
+    screen_bot_m_sfl = :zb
+""")
+try:
+    for loc in locs:
+        params = {
+            "lockey": loc[0],
+            "x": loc[1],
+            "y": loc[2],
+            "z": loc[3],
+            "zt": loc[4],
+            "zb": loc[5],
+        }
+
+        with engine.begin() as connection:
+            connection.execute(strsql, params)
+
+except Exception as e:
+    # Handle the conflict (e.g., log the error or ignore it)
+    print(f"Error: {e}. {loc[0]}.")
+
+# # create list to loop over
+# rename_cols = [ ##oud denk ik dit dus volgens mij niet meer nodig maar laat het even staan
+#     "parcel_width_m",
+#     "trenches",
+#     "trench_depth_m_sfl",
+#     "summer_stage_m_nap",
+#     "winter_stage_m_nap",
+#     "wis_distance_m",
+#     "wis_depth_m_sfl",
+# ]
+# for i in range(len(rename_cols)):
+#     strsql = f"""
+#     UPDATE nobv_timeseries.location_metadata2 m2
+#     SET {rename_cols[i]} = m1.{rename_cols[i]}
+#     FROM nobv_timeseries.location_metadata m1
+#     WHERE m1.well_id = m2.well_id
+#     """
+#     with engine.begin() as connection:
+#         connection.execute(text(strsql))
 
 # 3 assign ahn4 (needs some small changes to get it working)
 
@@ -117,27 +148,29 @@ assign_soiltype.assign_soiltype(engine, nwtbl)
 assign_parcelvalues.assign_parcelvalues(engine, nwtbl)
 
 #5.5 extra needed for saving the parcel_width_m data
-strsql = """
-SELECT 
-	well_id,
-	parcel_width_m
-FROM waterschappen_timeseries.location_metadata
-order by well_id
-"""
-locs = engine.execute(strsql).fetchall()
-for i in range(len(locs)):
-    lockey = locs[i][0]
-    p = locs[i][1]
-    try:
-        strsql = f"""insert into {nwtbl} (well_id,parcel_width_m) 
-                    VALUES ({lockey},{p})
-                    ON CONFLICT(well_id)
-                    DO UPDATE SET
-                    parcel_width_m = {p}"""
-        engine.execute(strsql)
-    except Exception as e:
-        # Handle the conflict (e.g., log the error or ignore it)
-        print(f"Error: {e}. {lockey}.")
+# strsql = """   -> volgens mij niet meer nodig want parcel_width_m komt nu mee bij assign_parcelvalues
+# SELECT 
+# 	well_id,
+# 	parcel_width_m
+# FROM nobv_timeseries.location_metadata
+# order by well_id
+# """
+# with engine.begin() as connection:
+#     locs = connection.execute(text(strsql)).fetchall()
+# for i in range(len(locs)):
+#     lockey = locs[i][0]
+#     p = locs[i][1]
+#     try:
+#         strsql = f"""insert into {nwtbl} (well_id,parcel_width_m) 
+#                     VALUES ({lockey},{p})
+#                     ON CONFLICT(well_id)
+#                     DO UPDATE SET
+#                     parcel_width_m = {p}"""
+#         with engine.begin() as connection:
+#             connection.execute(text(strsql))
+#     except Exception as e:
+#         # Handle the conflict (e.g., log the error or ignore it)
+#         print(f"Error: {e}. {lockey}.")
 
 # 6 assign_top10
 assign_top10.assign_t10(engine, tbl, nwtbl)
@@ -145,3 +178,5 @@ assign_top10.assign_t10(engine, tbl, nwtbl)
 # 7 assign timeseries timewindow and number of records
 assign_timeseriesstats.settimeseriesstats(engine, tbl, nwtbl)
 
+
+# %%

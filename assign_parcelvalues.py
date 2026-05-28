@@ -26,12 +26,14 @@
 
 # set of functions that gets data for every location available regarding a list of parameters:
 # - for every location querys (spatial query) the input parcels
-
+#%%
 # import math
 import time
 
 # import StringIO
 import os
+
+from sqlalchemy import text
 
 from ts_helpers.ts_helpers import establishconnection, testconnection
 from db_helpers import preptable
@@ -40,6 +42,7 @@ from db_helpers import preptable
 # ----- set various generic (location dependend) data in metadata table (xy from well)
 def assign_parcelvalues(engine, tbl):
     """Update metadata table with the input_parcels by performing a spatial query
+    2026: input_parcels_2022 is deprecated, the new function uses b_2024_ahn3
 
     Args:
         cf  (string): link to connection file with credentials
@@ -48,36 +51,32 @@ def assign_parcelvalues(engine, tbl):
     Returns:
         ...
     """
-    loctable = ".".join([tbl.split(".")[0], tbl.split(".")[1].split("_")[0]])
 
     strsql = f"""select 
-        l.well_id, 
-        ip.aan_id, 
-        type_peilb, 
-        ROUND(zomerpeil_::numeric,2), 
-        ROUND(winterpeil::numeric,2), 
-        ROUND(sloot_afst::numeric,2), 
-        ROUND(x_coord::numeric,2), 
-        ROUND(y_coord::numeric,2) 
+        l.locationkey as well_id, 
+        ip.name as aan_id, 
+        ROUND(summer_stage::numeric,2), 
+        ROUND(winter_stage::numeric,2), 
+        ROUND(width::numeric,2), 
+        ROUND(ip.x::numeric,2), 
+        ROUND(ip.y::numeric,2) 
         from {tbl} l 
-        join {loctable} loc on loc.locationkey = l.well_id
-        join input_parcels_2022 ip on st_within(loc.geom, ip.geom)"""
-    locs = engine.execute(strsql).fetchall()
+        join b_2024_ahn3 ip on st_within(loc.geom, ip.geom)"""
+    with engine.begin() as connection:
+        locs = connection.execute(text(strsql)).fetchall()
     for i in range(len(locs)):
         lockey = locs[i][0]
         aan_id = locs[i][1]
-        type_peilb = locs[i][2]
-        zomerpeil_ = locs[i][3]
-        winterpeil = locs[i][4]
-        sloot_afst = locs[i][5]
-        x_coord = locs[i][6]
-        y_coord = locs[i][7]
+        summer_stage = locs[i][2]
+        winter_stage = locs[i][3]
+        width = locs[i][4]
+        x = locs[i][5]
+        y = locs[i][6]
 
         try:
             strsqlu = f"""insert into {tbl} (
                             well_id,
                             aan_id, 
-                            parcel_type,
                             x_centre_parcel,
                             y_centre_parcel,
                             parcel_width_m,
@@ -85,24 +84,23 @@ def assign_parcelvalues(engine, tbl):
                             winter_stage_m_nap) 
                         VALUES ({lockey},
                                '{aan_id}',
-                               '{type_peilb}', 
-                                {x_coord},
-                                {y_coord},
-                                {sloot_afst},
-                                {zomerpeil_},
-                                {winterpeil})
+                                {x},
+                                {y},
+                                {width},
+                                {summer_stage},
+                                {winter_stage})
                         ON CONFLICT(well_id)
                         DO UPDATE SET   
                             aan_id = '{aan_id}', 
-                            parcel_type = '{type_peilb}',
-                            x_centre_parcel = {x_coord},
-                            y_centre_parcel = {y_coord},
-                            parcel_width_m = {sloot_afst},
-                            summer_stage_m_nap = {zomerpeil_},
-                            winter_stage_m_nap = {winterpeil}""".replace(
+                            x_centre_parcel = {x},
+                            y_centre_parcel = {y},
+                            parcel_width_m = {width},
+                            summer_stage_m_nap = {summer_stage},
+                            winter_stage_m_nap = {winter_stage}""".replace(
                 "None", "Null"
             )
-            engine.execute(strsqlu)
+            with engine.begin() as connection:
+                connection.execute(text(strsql))
         except Exception as e:
             # Handle the conflict (e.g., log the error or ignore it)
             print(f"Error: {e}. {lockey}.")
@@ -112,3 +110,5 @@ def test():
     cf = r"C:\develop\extensometer\connection_online.txt"
     session, engine = establishconnection(cf)
     tbl = "bro_timeseries.location_metadata2"
+
+# %%
