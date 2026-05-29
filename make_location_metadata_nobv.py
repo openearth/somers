@@ -145,7 +145,8 @@ assign_ahn4.assign_ahn(engine, tbl, nwtbl)
 assign_soiltype.assign_soiltype(engine, nwtbl)
 
 # 5 assign parcelvalues
-assign_parcelvalues.assign_parcelvalues(engine, nwtbl)
+assign_parcelvalues.assign_parcelvalues(engine, tbl)
+print('assigned parcel values')
 
 #5.5 extra needed for saving the parcel_width_m data
 # strsql = """   -> volgens mij niet meer nodig want parcel_width_m komt nu mee bij assign_parcelvalues

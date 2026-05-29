@@ -61,7 +61,7 @@ def assign_parcelvalues(engine, tbl):
         ROUND(ip.x::numeric,2), 
         ROUND(ip.y::numeric,2) 
         from {tbl} l 
-        join b_2024_ahn3 ip on st_within(loc.geom, ip.geom)"""
+        join b_2024_ahn3 ip on st_within(l.geom, ip.geom)"""
     with engine.begin() as connection:
         locs = connection.execute(text(strsql)).fetchall()
     for i in range(len(locs)):
@@ -101,6 +101,7 @@ def assign_parcelvalues(engine, tbl):
             )
             with engine.begin() as connection:
                 connection.execute(text(strsql))
+            print('assigned parcel values for location: '+str(lockey))
         except Exception as e:
             # Handle the conflict (e.g., log the error or ignore it)
             print(f"Error: {e}. {lockey}.")
