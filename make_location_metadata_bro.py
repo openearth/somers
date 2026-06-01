@@ -104,7 +104,7 @@ assign_ahn4.assign_ahn(engine, tbl, nwtbl)
 assign_soiltype.assign_soiltype(engine, nwtbl)
 
 # 5 assign parcelvalues
-assign_parcelvalues.assign_parcelvalues(engine, nwtbl)
+assign_parcelvalues.assign_parcelvalues(engine, tbl, nwtbl)
 
 # 6 assign_top10
 assign_top10.assign_t10(engine, tbl, nwtbl)
