@@ -60,7 +60,7 @@ session, engine = establishconnection(cf)
 tbl = "nobv_timeseries.location"
 nwtbl = "nobv_timeseries.location_metadata2"
 dctcolumns = tablesetup()
-# create_location_metadatatable(cf, nwtbl,dctcolumns)
+create_location_metadatatable(cf, nwtbl,dctcolumns)
 
 #location_metadata2 needs a primary key
 
@@ -145,7 +145,7 @@ assign_ahn4.assign_ahn(engine, tbl, nwtbl)
 assign_soiltype.assign_soiltype(engine, nwtbl)
 
 # 5 assign parcelvalues
-assign_parcelvalues.assign_parcelvalues(engine, tbl)
+assign_parcelvalues.assign_parcelvalues(engine, tbl, nwtbl)
 print('assigned parcel values')
 
 #5.5 extra needed for saving the parcel_width_m data

@@ -43,7 +43,9 @@ def tablesetup():
     dctcolumns["aan_id"] = "text"
     dctcolumns["name"] = "text"
     dctcolumns["transect"] = "integer"
-    dctcolumns["parcel_type"] = "text"  # is er een maatregel ja/nee (standaard is ref)
+    dctcolumns["measure"] = "text"  # is er een maatregel ja/nee (standaard is ref)
+    dctcolumns["x_centre_parcel"] = 'double precision'
+    dctcolumns["y_centre_parcel"] = 'double precision'
     dctcolumns["ditch_id"] = "text"
     dctcolumns["ditch_name"] = "text"
     dctcolumns["soil_class"] = "text"
@@ -76,6 +78,7 @@ def tablesetup():
     dctcolumns["parcel_geom"] = "text"  # WKT represenation of the geom of the parcel
     dctcolumns["selection"] = "text"
     dctcolumns["description"] = "text"
+    dctcolumns["measure"] = "text"
     return dctcolumns
 
 

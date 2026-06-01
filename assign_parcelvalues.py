@@ -40,7 +40,7 @@ from db_helpers import preptable
 
 
 # ----- set various generic (location dependend) data in metadata table (xy from well)
-def assign_parcelvalues(engine, tbl):
+def assign_parcelvalues(engine, tbl, nwtbl):
     """Update metadata table with the input_parcels by performing a spatial query
     2026: input_parcels_2022 is deprecated, the new function uses b_2024_ahn3
 
@@ -51,60 +51,75 @@ def assign_parcelvalues(engine, tbl):
     Returns:
         ...
     """
+    # Step 1: fetch data
+    strsql = f"""
+        SELECT 
+            l.locationkey AS well_id, 
+            ip.name AS aan_id, 
+            ROUND(summer_stage::numeric, 2) AS summer_stage,
+            ROUND(winter_stage::numeric, 2) AS winter_stage,
+            ROUND(width::numeric, 2) AS width,
+            ROUND(ip.x::numeric, 2) AS x,
+            ROUND(ip.y::numeric, 2) AS y,
+            ip.measure 
+        FROM {tbl} l
+        JOIN b_2024_ahn3 ip 
+            ON ST_Within(l.geom, ip.geom)
+    """
 
-    strsql = f"""select 
-        l.locationkey as well_id, 
-        ip.name as aan_id, 
-        ROUND(summer_stage::numeric,2), 
-        ROUND(winter_stage::numeric,2), 
-        ROUND(width::numeric,2), 
-        ROUND(ip.x::numeric,2), 
-        ROUND(ip.y::numeric,2) 
-        from {tbl} l 
-        join b_2024_ahn3 ip on st_within(l.geom, ip.geom)"""
     with engine.begin() as connection:
         locs = connection.execute(text(strsql)).fetchall()
-    for i in range(len(locs)):
-        lockey = locs[i][0]
-        aan_id = locs[i][1]
-        summer_stage = locs[i][2]
-        winter_stage = locs[i][3]
-        width = locs[i][4]
-        x = locs[i][5]
-        y = locs[i][6]
 
-        try:
-            strsqlu = f"""insert into {tbl} (
-                            well_id,
-                            aan_id, 
-                            x_centre_parcel,
-                            y_centre_parcel,
-                            parcel_width_m,
-                            summer_stage_m_nap,
-                            winter_stage_m_nap) 
-                        VALUES ({lockey},
-                               '{aan_id}',
-                                {x},
-                                {y},
-                                {width},
-                                {summer_stage},
-                                {winter_stage})
-                        ON CONFLICT(well_id)
-                        DO UPDATE SET   
-                            aan_id = '{aan_id}', 
-                            x_centre_parcel = {x},
-                            y_centre_parcel = {y},
-                            parcel_width_m = {width},
-                            summer_stage_m_nap = {summer_stage},
-                            winter_stage_m_nap = {winter_stage}""".replace(
-                "None", "Null"
+    # Step 2: upsert query (parameterized ✅)
+    upsert_sql = f"""
+        INSERT INTO {nwtbl} (
+            well_id,
+            aan_id, 
+            x_centre_parcel,
+            y_centre_parcel,
+            parcel_width_m,
+            summer_stage_m_nap,
+            winter_stage_m_nap,
+            measure
+        ) 
+        VALUES (
+            :well_id,
+            :aan_id,
+            :x,
+            :y,
+            :width,
+            :summer_stage,
+            :winter_stage,
+            :measure
+        )
+        ON CONFLICT (well_id)
+        DO UPDATE SET
+            aan_id = EXCLUDED.aan_id,
+            x_centre_parcel = EXCLUDED.x_centre_parcel,
+            y_centre_parcel = EXCLUDED.y_centre_parcel,
+            parcel_width_m = EXCLUDED.parcel_width_m,
+            summer_stage_m_nap = EXCLUDED.summer_stage_m_nap,
+            winter_stage_m_nap = EXCLUDED.winter_stage_m_nap,
+            measure = EXCLUDED.measure
+    """
+
+    # Step 3: execute updates safely
+    with engine.begin() as connection:
+        for row in locs:
+            connection.execute(
+                text(upsert_sql),
+                {
+                    "well_id": row[0],
+                    "aan_id": row[1],  
+                    "summer_stage": row[2],
+                    "winter_stage": row[3],
+                    "width": row[4],
+                    "x": row[5],
+                    "y": row[6],
+                    "measure": row[7],
+                },
             )
-            with engine.begin() as connection:
-                connection.execute(text(strsql))
-            print('assigned parcel values for location: '+str(lockey))
-        except Exception as e:
-            # Handle the conflict (e.g., log the error or ignore it)
-            print(f"Error: {e}. {lockey}.")
+
 
 
 def test():
