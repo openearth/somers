@@ -224,7 +224,19 @@ else:
 session, engine = establishconnection(fc)
 
 base = Path(r"P:\11207812-somers-ontwikkeling\3-somers_development\QSOMERS\Handmatige uitvraag 2026\handmatige_uitvraag_bestanden")
-wb_name_list = ["AGV", "HunzeEnAas", "Rijnland", "Rivierenland", "WDOD", "WSHD", "Wetterskip"] #add WB which are ready to be processed
+wb_name_list = ["AGV", 
+                "HunzeEnAas", 
+                "Rijnland", 
+                "Rivierenland",
+                "WDOD",
+                "WSHD",
+                "Wetterskip",
+                'Delfland',
+                'Noorderzijlvest',
+                'HDSR',
+                'HHNK',
+                'HHSK',
+                'Vallei_en_Veluwe'] #add WB which are ready to be processed
 
 # assigning parameters, either grondwaterstand or slootwaterpeil
 # zoetwaterstijghoogtes
@@ -270,7 +282,7 @@ for wb_name in wb_name_list:
     exists, count = check_waterboard_exists(wb_name)
     if exists:
         print(f"{wb_name}: Already has {count} locations in database")
-        # continue  # Skip this waterboard, need to change if one row needs to be updated
+        continue  # Skip this waterboard, need to change if one row needs to be updated
     else:
         print(f"{wb_name}: No existing data, starting fresh")
     
