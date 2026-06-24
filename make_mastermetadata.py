@@ -66,9 +66,10 @@ print("table created", nwtbl)
 # setup dcttable with tables
 dcttable = {}
 dcttable["bro_timeseries.location"] = "placeholder"
-dcttable["hdsr_timeseries.location"] = "placeholder"
-dcttable["hhnk_timeseries.location"] = "placeholder"
+# dcttable["hdsr_timeseries.location"] = "placeholder"
+# dcttable["hhnk_timeseries.location"] = "placeholder"
 dcttable["wskip_timeseries.location"] = "placeholder"
+dcttable["regiodeal_timeseries.location"] = "placeholder"
 dcttable["waterschappen_timeseries.location"] = "placeholder"  # handmetingen
 dcttable["nobv_timeseries.location"] = "placeholder"  # nobv handmatige bewerkingen data
 
@@ -110,7 +111,7 @@ for tbl in dcttable.keys():
             selection,
             description)
         SELECT ('{n}_'||l.locationkey::text) as well_id, 
-            i.aan_id::integer,
+            i.aan_id::text,
             l.name, 
             mt.transect::integer,
             'ref' as parcel_type,
@@ -185,7 +186,7 @@ for tbl in dcttable.keys():
             selection,
             description)
         SELECT ('{n}_'||l.locationkey::text) as well_id, 
-            i.aan_id::integer,
+            i.aan_id::text,
             l.name, 
             mt.transect::integer,
             'ref' as parcel_type,
