@@ -55,12 +55,12 @@ def assign_parcelvalues(engine, tbl, nwtbl):
     strsql = f"""
         SELECT 
             l.locationkey AS well_id, 
-            ip.name AS aan_id, 
+            ip.name AS name_bgt, 
             ROUND(summer_stage::numeric, 2) AS summer_stage,
             ROUND(winter_stage::numeric, 2) AS winter_stage,
             ROUND(width::numeric, 2) AS width,
-            ROUND(ip.x::numeric, 2) AS x,
-            ROUND(ip.y::numeric, 2) AS y,
+            ROUND(ip.x::numeric, 2) AS x_centre_parcel,
+            ROUND(ip.y::numeric, 2) AS y_centre_parcel,
             ip.measure 
         FROM {tbl} l
         JOIN b_2024_ahn3 ip 
@@ -74,7 +74,7 @@ def assign_parcelvalues(engine, tbl, nwtbl):
     upsert_sql = f"""
         INSERT INTO {nwtbl} (
             well_id,
-            aan_id, 
+            name_bgt, 
             x_centre_parcel,
             y_centre_parcel,
             parcel_width_m,
@@ -84,7 +84,7 @@ def assign_parcelvalues(engine, tbl, nwtbl):
         ) 
         VALUES (
             :well_id,
-            :aan_id,
+            :name_bgt,
             :x,
             :y,
             :width,
@@ -94,7 +94,7 @@ def assign_parcelvalues(engine, tbl, nwtbl):
         )
         ON CONFLICT (well_id)
         DO UPDATE SET
-            aan_id = EXCLUDED.aan_id,
+            name_bgt = EXCLUDED.name_bgt,
             x_centre_parcel = EXCLUDED.x_centre_parcel,
             y_centre_parcel = EXCLUDED.y_centre_parcel,
             parcel_width_m = EXCLUDED.parcel_width_m,
@@ -110,7 +110,7 @@ def assign_parcelvalues(engine, tbl, nwtbl):
                 text(upsert_sql),
                 {
                     "well_id": row[0],
-                    "aan_id": row[1],  
+                    "name_bgt": row[1],  
                     "summer_stage": row[2],
                     "winter_stage": row[3],
                     "width": row[4],

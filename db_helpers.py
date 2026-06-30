@@ -40,7 +40,7 @@ from sqlalchemy import text
 def tablesetup():
     dctcolumns = {}
     dctcolumns["well_id"] = "integer"
-    dctcolumns["aan_id"] = "text"
+    dctcolumns["name_bgt"] = "text"
     dctcolumns["name"] = "text"
     dctcolumns["transect"] = "integer"
     dctcolumns["measure"] = "text"  # is er een maatregel ja/nee (standaard is ref)

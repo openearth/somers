@@ -220,7 +220,7 @@ if local:
     fc = r'C:\projecten\groundwater\config_local_qsomers.txt'
 else:
     # fc = r"C:\develop\somers\configuration_somers.txt"
-    fc = r'C:\projecten\groundwater\config_online_qsomers.txt'
+    fc = r"C:\projecten\groundwater\config_online_qsomers.txt"
 session, engine = establishconnection(fc)
 
 base = Path(r"P:\11207812-somers-ontwikkeling\3-somers_development\QSOMERS\Handmatige uitvraag 2026\handmatige_uitvraag_bestanden")
