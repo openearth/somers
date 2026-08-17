@@ -3,7 +3,6 @@ import os
 from datetime import time
 import pandas as pd
 import configparser
-import glob
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
@@ -20,18 +19,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 sys.path.append(project_root)
 
 # third party packages
-from sqlalchemy import ARRAY,text
+from sqlalchemy import text
 from ts_helpers.ts_helpers_waterschappen import (
-    establishconnection,
-    read_config,
-    loadfilesource,
-    location,
-    sparameter,
-    sserieskey,
-    sflag,
-    dateto_integer,
-    convertlttodate,
-    stimestep,
+    establishconnection
 )
 
 local = False
