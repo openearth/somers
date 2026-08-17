@@ -39,8 +39,7 @@ with engine.connect() as conn:
     df = pd.read_sql(sqlstr, conn)
 #result is df met alle locaties
 def find_timeseries_data(schema, locationkey):
-    """Schema and location can either be derived from well_id or ditch_id.
-    Parameter is GWM or SWM"""
+    """Schema and location can either be derived from well_id or ditch_id"""
     sqlstr = """select tsv.datetime, tsv.scalarvalue, l.name, l.locationkey from {schema}_timeseries.timeseriesvaluesandflags tsv
     join {schema}_timeseries.timeseries t on t.timeserieskey=tsv.timeserieskey
     join {schema}_timeseries.location l on l.locationkey=t.locationkey
