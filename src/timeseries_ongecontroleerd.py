@@ -128,18 +128,21 @@ ditch_names = df["ditch_name"]
 surface_levels = df["altitude_m_nap"]
 
 # # testje voor slootpeil Berkenwoude
-timeseries = find_timeseries_data("regiodeal", 4) #Berkenwoude_sloot
-timeseries = find_timeseries_data("nobv", 47) #LYD_OP_12
-timeseries = find_timeseries_data("bro", 1149)
-timeseries = find_timeseries_data("waterschappen", 137)  # WDOD_SWM_10485S
-timeseries = find_timeseries_data("bro", 1152)
-timeseries = find_timeseries_data("waterschappen", 297) # Wetterskip_SWM_MM_SPC_PBS
-timeseries = find_timeseries_data("waterschappen", 288) # Wetterskip_SWM_GLB_BOR1
-timeseries = find_timeseries_data("nobv", 38) # ZEG_RF16_14
+timeseries = find_timeseries_data("regiodeal", 4)  # Berkenwoude_sloot
+# timeseries = find_timeseries_data("nobv", 47) #LYD_OP_12
+# timeseries = find_timeseries_data("bro", 1149)
+# timeseries = find_timeseries_data("waterschappen", 137)  # WDOD_SWM_10485S
+# timeseries = find_timeseries_data("bro", 1152)
+# timeseries = find_timeseries_data("waterschappen", 297) # Wetterskip_SWM_MM_SPC_PBS
+# timeseries = find_timeseries_data("waterschappen", 288) # Wetterskip_SWM_GLB_BOR1
+# timeseries = find_timeseries_data("nobv", 38) # ZEG_RF16_14
 
 print(timeseries)
 
+# regiodeal_wells = [well for well in wells_ids if "regiodeal" in well]
+
 for i, well_id in enumerate(wells_ids):
+    # for i, well_id in enumerate(regiodeal_wells):
     print(f"Working on {well_id}")
 
     well_origin = well_id.split("_")[0]
@@ -159,6 +162,9 @@ for i, well_id in enumerate(wells_ids):
 
     timeseries = timeseries["scalarvalue"]
     timeseries_ditch = timeseries_ditch["scalarvalue"]
+
+    timeseries_ditch = timeseries_ditch.sort_index()
+    timeseries = timeseries.sort_index()
 
     # make a simple figure #
     plot_gwlevel_timeseries(
