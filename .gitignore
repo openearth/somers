@@ -13,3 +13,4 @@ handmatige_uitvraag_to_db_ghn.py
 .pixi/*
 !.pixi/config.toml
 *.lock
+.vscode/*

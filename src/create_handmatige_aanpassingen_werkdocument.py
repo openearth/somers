@@ -109,7 +109,7 @@ from sqlalchemy import text
 from ts_helpers.ts_helpers_waterschappen import establishconnection
 
 figdir = Path(
-    "p:/11207812-somers-ontwikkeling/3-somers_development/QSOMERS/Dataverzameling 2026/Dataverzameling/timeseries_metadata_ongecontroleerd/"
+    "p:/11207812-somers-ontwikkeling/3-somers_development/QSOMERS/Dataverzameling 2026/Dataverzameling/Figuren_timeseries_metadata_ongecontroleerd/"
 )
 
 fc = "p:/11207812-somers-ontwikkeling/3-somers_development/QSOMERS/credentials/connection_online_jr.txt"
@@ -121,68 +121,43 @@ with engine.connect() as conn:
     df = pd.read_sql(sqlstr, conn)
 # result is df met alle locaties
 
-wells_ids = df["well_id"].to_list()
-names = df["name"].to_list()
-ditch_ids = df["ditch_id"]
-ditch_names = df["ditch_name"]
-surface_levels = df["altitude_m_nap"]
+df["source"] = df["well_id"].str.split("_").str[0]
 
-# # testje voor slootpeil Berkenwoude
-timeseries = find_timeseries_data("regiodeal", 4)  # Berkenwoude_sloot
-# timeseries = find_timeseries_data("nobv", 47) #LYD_OP_12
-# timeseries = find_timeseries_data("bro", 1149)
-# timeseries = find_timeseries_data("waterschappen", 137)  # WDOD_SWM_10485S
-# timeseries = find_timeseries_data("bro", 1152)
-# timeseries = find_timeseries_data("waterschappen", 297) # Wetterskip_SWM_MM_SPC_PBS
-# timeseries = find_timeseries_data("waterschappen", 288) # Wetterskip_SWM_GLB_BOR1
-# timeseries = find_timeseries_data("nobv", 38) # ZEG_RF16_14
+selected_columns = [
+    "well_id",
+    "name_bgt",
+    "name",
+    "transect",
+    "measure",
+    "ditch_id",
+    "ditch_name",
+    "soil_class",
+    "altitude_m_nap",
+    "ahn4_m_nap",
+    "start_date",
+    "end_date",
+    "parcel_width_m",
+    "distance_to_ditch_m",
+    "trenches",
+    "trench_depth_m_sfl",
+    "wis_distance_m",
+    "wis_depth_m_sfl",
+    "distance_to_wis_m",
+    "selection",
+    "description",
+    "source"
+]
 
-print(timeseries)
+df_selection = df[selected_columns]
 
-# regiodeal_wells = [well for well in wells_ids if "regiodeal" in well]
 
-for i, well_id in enumerate(wells_ids):
-    # for i, well_id in enumerate(regiodeal_wells):
-    print(f"Working on {well_id}")
+df_2024 = pd.read_excel(
+    r"p:\11207812-somers-ontwikkeling\3-somers_development\QSOMERS\Dataverzameling 2024\handmatige_aanpassingen\handmatige_aanpassingen_kalibratie_werkdocument.xlsx"
+)
 
-    well_origin = well_id.split("_")[0]
-    well_nr = int(well_id.split("_")[1])
-    well_name = names[i]
-    ditch_id = ditch_ids[i]
-    ditch_name = ditch_names[i]
-    ditch_origin = ditch_id.split("_")[0]
-    ditch_nr = int(ditch_id.split("_")[1])
-    surface_level = surface_levels[i]
+outputpath = Path("p:/11207812-somers-ontwikkeling/3-somers_development/QSOMERS/Dataverzameling 2026/handmatige_aanpassingen/handmatige_aanpassingen_2026_werkdocument.xlsx")
 
-    timeseries = find_timeseries_data(well_origin, well_nr)
-    timeseries_ditch = find_timeseries_data(ditch_origin, ditch_nr)
-
-    timeseries = timeseries.set_index("datetime")
-    timeseries_ditch = timeseries_ditch.set_index("datetime")
-
-    timeseries = timeseries["scalarvalue"]
-    timeseries_ditch = timeseries_ditch["scalarvalue"]
-
-    timeseries_ditch = timeseries_ditch.sort_index()
-    timeseries = timeseries.sort_index()
-
-    # make a simple figure #
-    plot_gwlevel_timeseries(
-        timeseries,
-        title=f"Grondwaterstand - {well_name}",
-        ditch_data=timeseries_ditch,
-        ditch_title=f"Slootpeil - {ditch_name}",
-        surface_level=surface_level,
-    )
-
-    # plt.show()
-    plt.savefig(
-        figdir.joinpath(f"{well_id}.png"),
-        bbox_inches="tight",
-        dpi=300,
-    )
-
-    plt.close()
+df_selection.to_excel(outputpath, index=False)
 
 print("Done")
 
