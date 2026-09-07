@@ -64,9 +64,9 @@ create_location_metadatatable(cf, nwtbl,dctcolumns)
 
 #location_metadata2 needs a primary key
 
-# strsql = f"""alter table {nwtbl} add primary key (well_id)"""
-# with engine.begin() as connection:
-#     connection.execute(text(strsql))
+strsql = f"""alter table {nwtbl} add primary key (well_id)"""
+with engine.begin() as connection:
+    connection.execute(text(strsql))
 
 # 2 data source specific
 # this part is different for every source, since the data is not exactly the same

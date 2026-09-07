@@ -193,7 +193,7 @@ def find_if_stored(name):
 # TODO assign primary key to the location_metadata table (well_id)
 
 # set reference to config file
-local = True
+local = False
 if local:
     # fc = r"C:\develop\somers\configuration_local.txt"
     fc = r'C:\projecten\groundwater\config_local_qsomers.txt'
@@ -202,7 +202,7 @@ else:
     fc = r'C:\projecten\groundwater\config_online_qsomers.txt'
 session, engine = establishconnection(fc)
 
-data_root = r"p:\11207812-somers-ontwikkeling\3-somers_development\QSOMERS\NOBV\2026\Grondwaterreeksen"
+data_root = r"P:\11207812-somers-ontwikkeling\3-somers_development\QSOMERS\Dataverzameling 2026\Dataverzameling\NOBV\Grondwaterreeksen"
 # assigning parameters, either grondwaterstand or slootwaterpeil
 # zoetwaterstijghoogtes
 pkeygwm = sparameter(
@@ -241,7 +241,7 @@ new_loc_swm = ["name", "x", "y"]
 timeseries = ["datetime", "scalarvalue"]
 
 for root, subdirs, files in os.walk(data_root):
-    for count, file in enumerate(files):
+    for count, file in enumerate(files):  # Test with only the first file
         if file.lower().endswith(".txt"):
             name = os.path.basename(file).split("_", 1)[1].rsplit(".", 1)[0]
             print(name)

@@ -212,7 +212,7 @@ else:
     fc = r'C:\projecten\groundwater\config_online_qsomers.txt'
 session, engine = establishconnection(fc)
 
-root = r"P:\11207812-somers-ontwikkeling\3-somers_development\QSOMERS\Regiodeal\2026\Grondwaterreeksen"
+root = r"P:\11207812-somers-ontwikkeling\3-somers_development\QSOMERS\Dataverzameling 2026\Dataverzameling\Regiodeal\2026\Grondwaterreeksen"
 # assigning parameters, either grondwaterstand or slootwaterpeil
 # zoetwaterstijghoogtes
 pkeygwm = sparameter(
@@ -330,6 +330,7 @@ for root, subdirs, files in os.walk(root):
                     r = latest_entry(skeyz)
 
                     if r != dfx["datetime"].iloc[-1]:
+                        dfx= dfx.drop_duplicates()
                         dfx["timeserieskey"] = skeyz
                         dfx["flags"] = flag
                         dfx.to_sql(

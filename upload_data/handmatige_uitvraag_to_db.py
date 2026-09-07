@@ -214,7 +214,7 @@ def check_waterboard_exists(wb_name):
 
 
 # set reference to config file
-local = False
+local = True
 if local:
     # fc = r"C:\develop\somers\configuration_local.txt"
     fc = r'C:\projecten\groundwater\config_local_qsomers.txt'
@@ -223,7 +223,7 @@ else:
     fc = r"C:\projecten\groundwater\config_online_qsomers.txt"
 session, engine = establishconnection(fc)
 
-base = Path(r"P:\11207812-somers-ontwikkeling\3-somers_development\QSOMERS\Handmatige uitvraag 2026\handmatige_uitvraag_bestanden")
+base = Path(r"P:\11207812-somers-ontwikkeling\3-somers_development\QSOMERS\Dataverzameling 2026\Dataverzameling\handmatige_uitvraag_bestanden")
 wb_name_list = ["AGV", 
                 "HunzeEnAas", 
                 "Rijnland", 
@@ -272,7 +272,7 @@ cols_metatable = [
     "WIS diepte (m-mv)",
 ]
 
-new_loctabel = ["name", "x", "y", "tubetop", "tubebot", "z"]
+new_loctabel = ["name", "x", "y", "tubetop", "tubebot", "altitude_msl"]
 new_loc_swm = ["name", "x", "y"]
 timeseries = ["datetime", "scalarvalue"]
 
