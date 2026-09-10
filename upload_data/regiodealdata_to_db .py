@@ -36,6 +36,9 @@ Created on Tue Jul 19 12:05:14 2022
 
 # %%
 import os
+os.environ["PROJ_DATA"] = (
+r"C:\Users\dees\.conda\envs\database\Library\share\proj"
+)
 from datetime import time
 import pandas as pd
 import configparser
