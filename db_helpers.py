@@ -72,6 +72,7 @@ def tablesetup():
     dctcolumns["screen_top_m_sfl"] = "double precision"
     dctcolumns["screen_bot_m_sfl"] = "double precision"
     dctcolumns["altitude_m_nap"] = "double precision"  # top buis
+
     dctcolumns["geometry"] = (
         "geometry(POINT, 28992)"  # Point representation because it is used in further analysis
     )
@@ -79,6 +80,8 @@ def tablesetup():
     dctcolumns["selection"] = "text"
     dctcolumns["description"] = "text"
     dctcolumns["measure"] = "text"
+    dctcolumns["distance_to_railroad_m"] = "double precision"
+    dctcolumns["distance_to_road_m"] = "double precision"  
     return dctcolumns
 
 
@@ -96,9 +99,8 @@ def preptable(engine, tbl, columname, datatype):
     """
     try:
         strsql = f"ALTER TABLE {tbl} ADD COLUMN IF NOT EXISTS {columname} {datatype}"
-        with engine.connect() as conn:
+        with engine.begin() as conn:
             conn.execute(text(strsql))
-            conn.commit()
     except Exception as e:
         print("following exception raised", e)
     finally:
@@ -118,9 +120,8 @@ def create_location_metadatatable(cf, tbl, dctcolumns):
     try:
         nwtbl = tbl
         strsql = f"create table if not exists {nwtbl} (well_id integer primary key)"
-        with engine.connect() as conn:
+        with engine.begin() as conn:
             conn.execute(text(strsql))
-            conn.commit()
         for columname in dctcolumns.keys():
             preptable(engine, nwtbl, columname, dctcolumns[columname])
     except Exception as e:

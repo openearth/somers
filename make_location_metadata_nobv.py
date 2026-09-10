@@ -25,6 +25,13 @@
 # your own tools.
 
 #%%
+import os
+# import osgeo
+# os.environ["PROJ_DATA"] = (
+# r"C:\Users\dees\.conda\envs\nl2120\Library\share\proj"
+# ) #pyproj issues, can be removed
+
+#%%
 ## some helper functions
 from ts_helpers.ts_helpers import establishconnection, testconnection
 from db_helpers import create_location_metadatatable, tablesetup
@@ -56,6 +63,15 @@ tbl = "nobv_timeseries.location"
 nwtbl = "nobv_timeseries.location_metadata2"
 dctcolumns = tablesetup()
 create_location_metadatatable(cf, nwtbl,dctcolumns)
+
+print('x')
+
+# strsql = f'''ALTER TABLE {nwtbl}
+# ADD CONSTRAINT wellid_pkey
+# PRIMARY KEY (well_id);
+# '''
+# with engine.begin() as connection:
+#     connection.execute(text(strsql))
 
 # 2 BRO specific
 # this part is different for every source, since the data is not exactly the same

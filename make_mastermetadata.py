@@ -51,13 +51,11 @@ lsttables = ["gwm", "swm", "kalibratie", "validatie"]
 schema = "metadata_ongecontroleerd"
 for tbl in lsttables:
     strsql = f"drop table if exists {schema}.{tbl}_old"
-    with engine.connect() as conn:
-        conn.execute(text(strsql))
-        conn.commit()
+    with engine.begin() as connection:
+        connection.execute(text(strsql))
     strsqln = f"alter table if exists {schema}.{tbl} rename to {tbl}_old"
-    with engine.connect() as conn:
-        conn.execute(text(strsqln))
-        conn.commit()
+    with engine.begin() as connection:
+        connection.execute(text(strsqln))
 
 # create table
 nwtbl = "metadata_ongecontroleerd.gwm"
@@ -158,9 +156,8 @@ for tbl in dcttable.keys():
             where p.id = 'GWM' and mt.distance_to_railroad_m > 10 and mt.distance_to_road_m > 10 and mt.distance_to_ditch_m > 5
             ON CONFLICT(well_id)
             DO NOTHING;"""
-        with engine.connect() as conn:
-            conn.execute(text(strsql))
-            conn.commit()
+        with engine.begin() as connection:
+            connection.execute(text(strsql))
 
     else:
         strsql = f"""insert into {nwtbl} (well_id, 
@@ -233,16 +230,14 @@ for tbl in dcttable.keys():
             where mt.distance_to_railroad_m > 10 and mt.distance_to_road_m > 10 and mt.distance_to_ditch_m > 5
             ON CONFLICT(well_id)
             DO NOTHING;"""
-        with engine.connect() as conn:
-            conn.execute(text(strsql))
-            conn.commit()
+        with engine.begin() as connection:
+            connection.execute(text(strsql))
 
 nwtbl = "metadata_ongecontroleerd.swm"
 strsql = f"""drop table if exists {nwtbl}; 
 create table if not exists {nwtbl} (well_id text primary key)"""
-with engine.connect() as conn:
-    conn.execute(text(strsql))
-    conn.commit()
+with engine.begin() as connection:
+    connection.execute(text(strsql))
 
 print("table created", nwtbl)
 preptable(engine, nwtbl, "name", "text")
@@ -259,9 +254,8 @@ for tbl in dcttable.keys():
             JOIN {n}_timeseries.parameter p on p.parameterkey = t.parameterkey where p.id = 'SWM'
             ON CONFLICT(well_id)
             DO NOTHING;"""
-        with engine.connect() as conn:
-            conn.execute(text(strsql))
-            conn.commit()
+        with engine.begin() as connection:
+            connection.execute(text(strsql))
 
 
 # %%
@@ -291,26 +285,23 @@ SET ditch_id = CASE
             END
 FROM updated_values
 WHERE metadata_ongecontroleerd.gwm.well_id = updated_values.all_source;"""
-with engine.connect() as conn:
-    conn.execute(text(strsql))
-    conn.commit()
+with engine.begin() as connection:
+    connection.execute(text(strsql))
 
 # %%
 strsql = f"""drop table if exists metadata_ongecontroleerd.kalibratie; 
 create table metadata_ongecontroleerd.kalibratie as
 select * from metadata_ongecontroleerd.gwm
 where ditch_id is not Null;"""
-with engine.connect() as conn:
-    conn.execute(text(strsql))
-    conn.commit()
+with engine.begin() as connection:
+    connection.execute(text(strsql))
 
 strsql = f"""drop table if exists metadata_ongecontroleerd.validatie;
 create table metadata_ongecontroleerd.validatie as
 select * from metadata_ongecontroleerd.gwm
 where ditch_id is Null;"""
-with engine.connect() as conn:
-    conn.execute(text(strsql))
-    conn.commit()
+with engine.begin() as connection:
+    connection.execute(text(strsql))
 
 print("created table kalibratie, validatie")
 
@@ -318,8 +309,7 @@ print("created table kalibratie, validatie")
 # does not work inside python and needs to be done in pgadmin
 user = "dees"
 strsql = f"reassign owned by {user} to qsomers"
-with engine.connect() as conn:
-    conn.execute(text(strsql))
-    conn.commit()
+with engine.begin() as connection:
+    connection.execute(text(strsql))
 
 # %%

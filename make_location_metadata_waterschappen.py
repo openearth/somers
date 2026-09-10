@@ -55,101 +55,109 @@ tbl = "waterschappen_timeseries.location"
 nwtbl = "waterschappen_timeseries.location_metadata2"
 dctcolumns = tablesetup()
 create_location_metadatatable(cf, nwtbl,dctcolumns)
+#%%
 
-# 2 BRO specific
-# this part is different for every source, since the data is not exactly the same
-# for BRO data, all values are with respect to reference level (m-NAP), while model expects m-mv
-strsql = """
-SELECT 
-	locationkey,
-	st_x(geom),
-	st_y(geom),
-	altitude_msl as z_surface_level_m_nap,
-	tubetop as screen_top_m_sfl,
-	tubebot as screen_bot_m_sfl
-FROM waterschappen_timeseries.location
-order by locationkey
-"""
-with engine.begin() as connection:
-    locs = connection.execute(text(strsql)).fetchall()
-for i in range(len(locs)):
-    lockey = locs[i][0]
-    x = locs[i][1]
-    y = locs[i][2]
-    z = locs[i][3] if locs[i][3] is not None else 'NULL'
-    zt = locs[i][4] if locs[i][4] is not None else 'NULL'
-    zb = locs[i][5] if locs[i][5] is not None else 'NULL'
-    try:
-        strsql = f"""insert into {nwtbl} (well_id, x_well,y_well,z_surface_level_m_nap,screen_top_m_sfl,screen_bot_m_sfl) 
-                    VALUES ({lockey},{x},{y}, {z}, {zt},{zb})
-                    ON CONFLICT(well_id)
-                    DO UPDATE SET
-                    x_well = {x}, 
-                    y_well = {y}, 
-                    z_surface_level_m_nap = {z}, 
-                    screen_top_m_sfl = {zt}, 
-                    screen_bot_m_sfl = {zb}"""
-        with engine.begin() as connection:
-            connection.execute(text(strsql))
-    except Exception as e:
-        # Handle the conflict (e.g., log the error or ignore it)
-        print(f"Error: {e}. {lockey}.")
+# strsql = f'''ALTER TABLE {nwtbl}
+# # ADD CONSTRAINT wellid_pkey
+# # PRIMARY KEY (well_id);
+# # '''
+# # with engine.begin() as connection:
+# #     connection.execute(text(strsql))
 
-# create list to loop over
-# rename_cols = [
-#     "parcel_width_m",
-#     "trenches",
-#     "trench_depth_m_sfl",
-#     "summer_stage_m_nap",
-#     "winter_stage_m_nap",
-#     "wis_distance_m",
-#     "wis_depth_m_sfl",
-# ]
-# for i in range(len(rename_cols)):
-#     strsql = f"""
-#     UPDATE waterschappen_timeseries.location_metadata2 m2
-#     SET {rename_cols[i]} = m1.{rename_cols[i]}
-#     FROM waterschappen_timeseries.location_metadata m1
-#     WHERE m1.well_id = m2.well_id
-#     """
-#     with engine.begin() as connection:
-#         connection.execute(text(strsql))
+# # 2 BRO specific
+# # this part is different for every source, since the data is not exactly the same
+# # for BRO data, all values are with respect to reference level (m-NAP), while model expects m-mv
+# strsql = """
+# SELECT 
+# 	locationkey,
+# 	st_x(geom),
+# 	st_y(geom),
+# 	altitude_msl as z_surface_level_m_nap,
+# 	tubetop as screen_top_m_sfl,
+# 	tubebot as screen_bot_m_sfl
+# FROM waterschappen_timeseries.location
+# order by locationkey
+# """
+# with engine.begin() as connection:
+#     locs = connection.execute(text(strsql)).fetchall()
+# for i in range(len(locs)):
+#     lockey = locs[i][0]
+#     x = locs[i][1]
+#     y = locs[i][2]
+#     z = locs[i][3] if locs[i][3] is not None else 'NULL'
+#     zt = locs[i][4] if locs[i][4] is not None else 'NULL'
+#     zb = locs[i][5] if locs[i][5] is not None else 'NULL'
+#     try:
+#         strsql = f"""insert into {nwtbl} (well_id, x_well,y_well,z_surface_level_m_nap,screen_top_m_sfl,screen_bot_m_sfl) 
+#                     VALUES ({lockey},{x},{y}, {z}, {zt},{zb})
+#                     ON CONFLICT(well_id)
+#                     DO UPDATE SET
+#                     x_well = {x}, 
+#                     y_well = {y}, 
+#                     z_surface_level_m_nap = {z}, 
+#                     screen_top_m_sfl = {zt}, 
+#                     screen_bot_m_sfl = {zb}"""
+#         with engine.begin() as connection:
+#             connection.execute(text(strsql))
+#     except Exception as e:
+#         # Handle the conflict (e.g., log the error or ignore it)
+#         print(f"Error: {e}. {lockey}.")
 
-# 3 assign ahn4 (needs some small changes to get it working)
-# need of geometry column for conversion to Lat-long, it is expected that geom is in 28992
-assign_ahn4.assign_ahn(engine, "waterschappen_timeseries.location", nwtbl)
+# # create list to loop over
+# # rename_cols = [
+# #     "parcel_width_m",
+# #     "trenches",
+# #     "trench_depth_m_sfl",
+# #     "summer_stage_m_nap",
+# #     "winter_stage_m_nap",
+# #     "wis_distance_m",
+# #     "wis_depth_m_sfl",
+# # ]
+# # for i in range(len(rename_cols)):
+# #     strsql = f"""
+# #     UPDATE waterschappen_timeseries.location_metadata2 m2
+# #     SET {rename_cols[i]} = m1.{rename_cols[i]}
+# #     FROM waterschappen_timeseries.location_metadata m1
+# #     WHERE m1.well_id = m2.well_id
+# #     """
+# #     with engine.begin() as connection:
+# #         connection.execute(text(strsql))
 
-# 4 assign soiltype
-assign_soiltype.assign_soiltype(engine, nwtbl)
+# # 3 assign ahn4 (needs some small changes to get it working)
+# # need of geometry column for conversion to Lat-long, it is expected that geom is in 28992
+# assign_ahn4.assign_ahn(engine, "waterschappen_timeseries.location", nwtbl)
 
-# 5 assign parcelvalues
-assign_parcelvalues.assign_parcelvalues(engine, tbl, nwtbl)
-print('assigned parcel values')
+# # 4 assign soiltype
+# assign_soiltype.assign_soiltype(engine, nwtbl)
 
-# 5.5 extra needed for saving the parcel_width_m data
-strsql = """
-SELECT 
-	well_id,
-	parcel_width_m
-FROM waterschappen_timeseries.location_metadata2
-order by well_id
-"""
-with engine.begin() as connection:
-    locs = connection.execute(text(strsql)).fetchall()
-for i in range(len(locs)):
-    lockey = locs[i][0]
-    p = locs[i][1] if locs[i][1] is not None else 'NULL'
-    try:
-        strsql = f"""insert into {nwtbl} (well_id,parcel_width_m) 
-                    VALUES ({lockey},{p})
-                    ON CONFLICT(well_id)
-                    DO UPDATE SET
-                    parcel_width_m = {p}"""
-        with engine.begin() as connection:
-            connection.execute(text(strsql))
-    except Exception as e:
-        # Handle the conflict (e.g., log the error or ignore it)
-        print(f"Error: {e}. {lockey}.")
+# # 5 assign parcelvalues
+# assign_parcelvalues.assign_parcelvalues(engine, tbl, nwtbl)
+# print('assigned parcel values')
+
+# # 5.5 extra needed for saving the parcel_width_m data
+# strsql = """
+# SELECT 
+# 	well_id,
+# 	parcel_width_m
+# FROM waterschappen_timeseries.location_metadata2
+# order by well_id
+# """
+# with engine.begin() as connection:
+#     locs = connection.execute(text(strsql)).fetchall()
+# for i in range(len(locs)):
+#     lockey = locs[i][0]
+#     p = locs[i][1] if locs[i][1] is not None else 'NULL'
+#     try:
+#         strsql = f"""insert into {nwtbl} (well_id,parcel_width_m) 
+#                     VALUES ({lockey},{p})
+#                     ON CONFLICT(well_id)
+#                     DO UPDATE SET
+#                     parcel_width_m = {p}"""
+#         with engine.begin() as connection:
+#             connection.execute(text(strsql))
+#     except Exception as e:
+#         # Handle the conflict (e.g., log the error or ignore it)
+#         print(f"Error: {e}. {lockey}.")
 
 # 6 assign_top10
 assign_top10.assign_t10(engine, tbl, nwtbl)
