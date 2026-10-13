@@ -38,6 +38,7 @@ dcttop10["top10.top10nl_waterdeel_lijn"] = "distance_to_ditch_m"
 dcttop10["top10.top10nl_spooras"] = "distance_to_railroad_m"
 dcttop10["top10.top10nl_wegdeel_hartlijn"] = "distance_to_road_m"
 
+print(dcttop10)
 
 def assign_t10(engine, tbl, metatable):
     """Update metadata table with the top10 by performing a spatial query on the soiltype database
@@ -52,6 +53,7 @@ def assign_t10(engine, tbl, metatable):
     """
     for t10 in dcttop10.keys():
         c = dcttop10[t10]
+        print(c)
         print("retrieving distances between points from ", tbl, " for ", t10)
         nwtbl = metatable
         preptable(engine, nwtbl, c, "double precision")

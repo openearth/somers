@@ -58,7 +58,7 @@ session, engine = establishconnection(cf)
 
 # 1 setup metadata table (tbl should be new name)
 tbl = "bro_timeseries.location"
-nwtbl = "bro_timeseries.location_metadata"
+nwtbl = "bro_timeseries.location_metadata2"
 dctcolumns = tablesetup()
 create_location_metadatatable(cf, nwtbl,dctcolumns)
 
