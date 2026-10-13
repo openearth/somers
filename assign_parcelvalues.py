@@ -32,8 +32,11 @@ import time
 
 # import StringIO
 import os
-
+import sys
 from sqlalchemy import text
+
+# Add the parent directory to the system path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from ts_helpers.ts_helpers import establishconnection, testconnection
 from db_helpers import preptable
@@ -124,6 +127,7 @@ def assign_parcelvalues(engine, tbl, nwtbl):
 
 def test():
     cf = r"C:\develop\extensometer\connection_online.txt"
+    cf = r'C:\develop\somers\configuration_somers.txt'
     session, engine = establishconnection(cf)
     tbl = "bro_timeseries.location_metadata2"
 
