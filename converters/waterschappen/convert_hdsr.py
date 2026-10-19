@@ -42,7 +42,7 @@ def set_xaxis_datelabels(ax):
 
 
 basedir = Path(
-    "p:/11207812-somers-ontwikkeling/3-somers_development/QSOMERS/Handmatige uitvraag 2026/handmatige_uitvraag_bestanden/HDSR"
+    "p:/11207812-somers-ontwikkeling/3-somers_development/QSOMERS/Dataverzameling 2026/Dataverzameling/handmatige_uitvraag_bestanden/HDSR"
 )
 
 ontvangen_dir = basedir.joinpath("ontvangen")
@@ -72,7 +72,7 @@ data_2026.index = pd.to_datetime(data_2026.index, format="%d-%m-%Y %H:%M")
 
 for name in langeweide_names:
     source_txt_path = Path(
-        f"p:/11207812-somers-ontwikkeling/3-somers_development/QSOMERS/Handmatige uitvraag 2024/handmatige_uitvraag_bestanden/HDSR/geschikte_data/{name}.txt"
+        f"p:/11207812-somers-ontwikkeling/3-somers_development/QSOMERS/Dataverzameling 2024/Dataverzameling/handmatige_uitvraag_bestanden/HDSR/geschikte_data/{name}.txt"
     )
 
     data_2024_peilbuis = pd.read_csv(
@@ -108,6 +108,7 @@ for name in langeweide_names:
         mode="a",
         sep=";",
         date_format="%d-%m-%Y %H:%M:%S",
+        header=False
     )
 
     data_combined.plot(title=name)
