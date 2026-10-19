@@ -31,6 +31,10 @@ Created on Tue Jul 19 12:05:14 2022
 # your own tools.
 
 """
+    
+"""This script retrieves groundwater data from the Wetterskip Fryslan ArcGIS REST services and stores it in a PostgreSQL/PostGIS database with a FEWS timeseries data model. It processes location and parameter information, retrieves timeseries data for each location, and updates the database accordingly.
+   The unit of measurement is m-NAP, and the data is stored with associated flags indicating quality. The script also updates metadata for locations based on elevation information from the Wetterskip Fryslan website.
+"""
 
 # base link is https://gis.wetterskipfryslan.nl/arcgis/rest/services/Grondwatersite_mpn/MapServer/1/query?outFields=*&orderByFields=MONSTERDATUM&f=json&where=TELEMETRIELOCATIEID%3D%27L6206%27+AND+MONSTERDATUM+%3E+date+%272021-8-2+00%3A00%3A00%27+
 import datetime

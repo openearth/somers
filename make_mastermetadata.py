@@ -39,7 +39,8 @@ from db_helpers import preptable, tablesetup, create_location_metadatatable
 # globals
 # cf = r"C:\develop\extensometer\connection_online.txt"
 # cf = r"C:\projecten\grondwater_monitoring\nobv\2023\connection_online_qsomers.txt"
-cf = r"C:\projecten\groundwater\config_online_qsomers.txt"
+#cf = r"C:\projecten\groundwater\config_online_qsomers.txt"
+cf = r"C:\develop\somers\configuration_local.txt"
 
 session, engine = establishconnection(cf)
 
@@ -49,30 +50,71 @@ if not testconnection(engine):
 # for security, remove _old tables and copy current (if exists) tables to _old
 lsttables = ["gwm", "swm", "kalibratie", "validatie"]
 schema = "metadata_ongecontroleerd"
+
+# check if schema exists, if not create it
+strsql = f"create schema if not exists {schema}"
+with engine.begin() as connection:
+    connection.execute(text(strsql))
+
 for tbl in lsttables:
     strsql = f"drop table if exists {schema}.{tbl}_old"
-    with engine.connect() as conn:
-        conn.execute(text(strsql))
-        conn.commit()
+    with engine.begin() as connection:
+        connection.execute(text(strsql))
     strsqln = f"alter table if exists {schema}.{tbl} rename to {tbl}_old"
-    with engine.connect() as conn:
-        conn.execute(text(strsqln))
-        conn.commit()
+    with engine.begin() as connection:
+        connection.execute(text(strsqln))
 
 # create table
 nwtbl = "metadata_ongecontroleerd.gwm"
-dctcolumns = tablesetup()
+metadata_columns = (
+    "well_id",
+    "name_bgt",
+    "name",
+    "transect",
+    "measure",
+    "ditch_id",
+    "ditch_name",
+    "soil_class",
+    "start_date",
+    "end_date",
+    "records",
+    "parcel_width_m",
+    "summer_stage_m_nap",
+    "winter_stage_m_nap",
+    "x_well",
+    "y_well",
+    "x_centre_parcel",
+    "y_centre_parcel",
+    "z_surface_level_m_nap",
+    "altitude_m_nap",
+    "ahn4_m_nap",
+    "distance_to_ditch_m",
+    "trenches",
+    "trench_depth_m_sfl",
+    "wis_distance_m",
+    "wis_depth_m_sfl",
+    "distance_to_wis_m",
+    "screen_top_m_sfl",
+    "screen_bot_m_sfl",
+    "source",
+    "selection",
+    "description",
+    "geometry",
+    "parcel_geom",
+)
+column_types = tablesetup()
+column_types["source"] = "text"
+dctcolumns = {column: column_types[column] for column in metadata_columns}
 create_location_metadatatable(cf, nwtbl, dctcolumns)
 print("table created", nwtbl)
 preptable(engine, nwtbl, "name", "text")
-preptable(engine, nwtbl, "source", "text")
-preptable(engine, nwtbl, "geom", "geometry(POINT, 28992)")
+#preptable(engine, nwtbl, "geom", "geometry(POINT, 28992)")
 
 strsql = f"""alter table {nwtbl} alter column well_id TYPE text"""
 with engine.begin() as connection:
     connection.execute(text(strsql))
 
-# setup dcttable with tables
+# setup dcttable with tables, HDSR, HHNK, WSKIP can be excluded, they are in waterschappen_timeseries or otherwise in BRO
 dcttable = {}
 dcttable["bro_timeseries.location"] = "placeholder"
 # dcttable["hdsr_timeseries.location"] = "placeholder"
@@ -88,7 +130,8 @@ for tbl in dcttable.keys():
     print("attempt to exectute queries for", n)
     # NOBV and Waterschappen can have multipe parameters per location, only GWM now required.
     if n == "nobv" or n == "waterschappen" or n == 'regiodeal':
-        strsql = f"""insert into {nwtbl} (well_id, 
+        strsql = f"""insert into {nwtbl} (
+            well_id, 
             name_bgt,
             name,
             transect,
@@ -114,6 +157,7 @@ for tbl in dcttable.keys():
             distance_to_wis_m,
             screen_top_m_sfl,
             screen_bot_m_sfl,
+            source,
             altitude_m_nap,
             geometry, 
             parcel_geom,
@@ -145,6 +189,7 @@ for tbl in dcttable.keys():
             Null::double precision as distance_to_wis_m,
             l.tubetop as screen_top_m_sfl, 
             l.tubebot as screen_bot_m_sfl,
+            '{n}' as source,
             l.altitude_msl as altitude_m_nap,
             l.geom,
             st_astext(st_force2d(i.geom)),
@@ -158,9 +203,8 @@ for tbl in dcttable.keys():
             where p.id = 'GWM' and mt.distance_to_railroad_m > 10 and mt.distance_to_road_m > 10 and mt.distance_to_ditch_m > 5
             ON CONFLICT(well_id)
             DO NOTHING;"""
-        with engine.connect() as conn:
-            conn.execute(text(strsql))
-            conn.commit()
+        with engine.begin() as connection:
+            connection.execute(text(strsql))
 
     else:
         strsql = f"""insert into {nwtbl} (well_id, 
@@ -181,6 +225,8 @@ for tbl in dcttable.keys():
             winter_stage_m_nap,
             x_well,
             y_well,
+            x_centre_parcel,
+            y_centre_parcel,
             distance_to_ditch_m,
             trenches,
             trench_depth_m_sfl,
@@ -189,6 +235,7 @@ for tbl in dcttable.keys():
             distance_to_wis_m,
             screen_top_m_sfl,
             screen_bot_m_sfl,
+            source,
             altitude_m_nap,
             geometry, 
             parcel_geom,
@@ -211,7 +258,9 @@ for tbl in dcttable.keys():
             mt.summer_stage_m_nap,
             mt.winter_stage_m_nap, 
             st_x(l.geom),
-            st_y(l.geom),            
+            st_y(l.geom),
+            mt.x_centre_parcel,
+            mt.y_centre_parcel,            
             mt.distance_to_ditch_m,
             mt.trenches,
             mt.trench_depth_m_sfl,
@@ -220,6 +269,7 @@ for tbl in dcttable.keys():
             Null::double precision as distance_to_wis_m,
             l.tubetop as screen_top_m_sfl, 
             l.tubebot as screen_bot_m_sfl,
+            '{n}' as source,
             l.altitude_msl as altitude_m_nap,
             l.geom,
             st_astext(st_force2d(i.geom)),
@@ -233,16 +283,14 @@ for tbl in dcttable.keys():
             where mt.distance_to_railroad_m > 10 and mt.distance_to_road_m > 10 and mt.distance_to_ditch_m > 5
             ON CONFLICT(well_id)
             DO NOTHING;"""
-        with engine.connect() as conn:
-            conn.execute(text(strsql))
-            conn.commit()
+        with engine.begin() as connection:
+            connection.execute(text(strsql))
 
 nwtbl = "metadata_ongecontroleerd.swm"
 strsql = f"""drop table if exists {nwtbl}; 
 create table if not exists {nwtbl} (well_id text primary key)"""
-with engine.connect() as conn:
-    conn.execute(text(strsql))
-    conn.commit()
+with engine.begin() as connection:
+    connection.execute(text(strsql))
 
 print("table created", nwtbl)
 preptable(engine, nwtbl, "name", "text")
@@ -259,9 +307,8 @@ for tbl in dcttable.keys():
             JOIN {n}_timeseries.parameter p on p.parameterkey = t.parameterkey where p.id = 'SWM'
             ON CONFLICT(well_id)
             DO NOTHING;"""
-        with engine.connect() as conn:
-            conn.execute(text(strsql))
-            conn.commit()
+        with engine.begin() as connection:
+            connection.execute(text(strsql))
 
 
 # %%
@@ -291,26 +338,23 @@ SET ditch_id = CASE
             END
 FROM updated_values
 WHERE metadata_ongecontroleerd.gwm.well_id = updated_values.all_source;"""
-with engine.connect() as conn:
-    conn.execute(text(strsql))
-    conn.commit()
+with engine.begin() as connection:
+    connection.execute(text(strsql))
 
 # %%
 strsql = f"""drop table if exists metadata_ongecontroleerd.kalibratie; 
 create table metadata_ongecontroleerd.kalibratie as
 select * from metadata_ongecontroleerd.gwm
 where ditch_id is not Null;"""
-with engine.connect() as conn:
-    conn.execute(text(strsql))
-    conn.commit()
+with engine.begin() as connection:
+    connection.execute(text(strsql))
 
 strsql = f"""drop table if exists metadata_ongecontroleerd.validatie;
 create table metadata_ongecontroleerd.validatie as
 select * from metadata_ongecontroleerd.gwm
 where ditch_id is Null;"""
-with engine.connect() as conn:
-    conn.execute(text(strsql))
-    conn.commit()
+with engine.begin() as connection:
+    connection.execute(text(strsql))
 
 print("created table kalibratie, validatie")
 
@@ -318,8 +362,7 @@ print("created table kalibratie, validatie")
 # does not work inside python and needs to be done in pgadmin
 user = "dees"
 strsql = f"reassign owned by {user} to qsomers"
-with engine.connect() as conn:
-    conn.execute(text(strsql))
-    conn.commit()
+with engine.begin() as connection:
+    connection.execute(text(strsql))
 
 # %%
