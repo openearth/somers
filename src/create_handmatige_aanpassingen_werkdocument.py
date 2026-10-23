@@ -1,14 +1,14 @@
 # %%
-import os
-from datetime import time
-import pandas as pd
 import configparser
-import numpy as np
-import matplotlib.pyplot as plt
+import os
 import sys
+from datetime import time
 from pathlib import Path
-import matplotlib.pyplot as plt
+
 import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 
 
 def find_timeseries_data(schema, locationkey):
@@ -157,7 +157,7 @@ df_2024 = pd.read_excel(
 
 outputpath = Path("p:/11207812-somers-ontwikkeling/3-somers_development/QSOMERS/Dataverzameling 2026/handmatige_aanpassingen/handmatige_aanpassingen_2026_werkdocument.xlsx")
 
-df_selection.to_excel(outputpath, index=False)
+df.to_excel(outputpath, index=False)
 
 print("Done")
 
