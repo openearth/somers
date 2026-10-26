@@ -37,11 +37,11 @@ from ts_helpers.ts_helpers import establishconnection, testconnection
 from db_helpers import preptable, tablesetup, create_location_metadatatable
 
 # globals
-# cf = r"C:\develop\extensometer\connection_online.txt"
-# cf = r"C:\projecten\grondwater_monitoring\nobv\2023\connection_online_qsomers.txt"
-#cf = r"C:\projecten\groundwater\config_online_qsomers.txt"
-cf = r"C:\develop\somers\configuration_local.txt"
-
+local = True
+if local:
+    cf = r"C:\develop\somers\configuration_local.txt"
+else:
+    cf = r"C:\projecten\groundwater\config_online_qsomers.txt"
 session, engine = establishconnection(cf)
 
 if not testconnection(engine):
@@ -50,6 +50,20 @@ if not testconnection(engine):
 # for security, remove _old tables and copy current (if exists) tables to _old
 lsttables = ["gwm", "swm", "kalibratie", "validatie"]
 schema = "metadata_ongecontroleerd"
+
+# %%
+# setup dcttable with tables, HDSR, HHNK, WSKIP can be excluded, they are in waterschappen_timeseries or otherwise in BRO
+dcttable = {}
+dcttable["bro_timeseries.location"] = "placeholder"
+# dcttable["hdsr_timeseries.location"] = "placeholder"
+# dcttable["hhnk_timeseries.location"] = "placeholder"
+# dcttable["wskip_timeseries.location"] = "placeholder"
+dcttable["regiodeal_timeseries.location"] = "placeholder"
+dcttable["waterschappen_timeseries.location"] = "placeholder"  # handmetingen
+dcttable["nobv_timeseries.location"] = "placeholder"  # nobv handmatige bewerkingen data
+
+elevtable = "somers_input_ahn3_2025"
+user = 'hendrik_gt'
 
 # check if schema exists, if not create it
 strsql = f"create schema if not exists {schema}"
@@ -64,6 +78,7 @@ for tbl in lsttables:
     with engine.begin() as connection:
         connection.execute(text(strsqln))
 
+# %%
 # create table
 nwtbl = "metadata_ongecontroleerd.gwm"
 metadata_columns = (
@@ -114,16 +129,8 @@ strsql = f"""alter table {nwtbl} alter column well_id TYPE text"""
 with engine.begin() as connection:
     connection.execute(text(strsql))
 
-# setup dcttable with tables, HDSR, HHNK, WSKIP can be excluded, they are in waterschappen_timeseries or otherwise in BRO
-dcttable = {}
-dcttable["bro_timeseries.location"] = "placeholder"
-# dcttable["hdsr_timeseries.location"] = "placeholder"
-# dcttable["hhnk_timeseries.location"] = "placeholder"
-# dcttable["wskip_timeseries.location"] = "placeholder"
-dcttable["regiodeal_timeseries.location"] = "placeholder"
-dcttable["waterschappen_timeseries.location"] = "placeholder"  # handmetingen
-dcttable["nobv_timeseries.location"] = "placeholder"  # nobv handmatige bewerkingen data
 
+# %%
 # retrieve for every table in the dicttable all relevant data and transfer to nwtbl
 for tbl in dcttable.keys():
     n = tbl.split("_")[0]
@@ -192,14 +199,14 @@ for tbl in dcttable.keys():
             '{n}' as source,
             l.altitude_msl as altitude_m_nap,
             l.geom,
-            st_astext(st_force2d(i.geom)),
+            st_astext(st_force2d(i.geometry)),
             'yes' as selection,
             l.description
             FROM {n}_timeseries.location l
             JOIN {n}_timeseries.location_metadata2 mt on mt.well_id = l.locationkey
             JOIN {n}_timeseries.timeseries t on t.locationkey = l.locationkey
             JOIN {n}_timeseries.parameter p on p.parameterkey = t.parameterkey
-            JOIN public.b_2024_ahn3 i on st_within(l.geom,i.geom)
+            JOIN public.{elevtable} i on st_within(l.geom,i.geometry)
             where p.id = 'GWM' and mt.distance_to_railroad_m > 10 and mt.distance_to_road_m > 10 and mt.distance_to_ditch_m > 5
             ON CONFLICT(well_id)
             DO NOTHING;"""
@@ -272,14 +279,14 @@ for tbl in dcttable.keys():
             '{n}' as source,
             l.altitude_msl as altitude_m_nap,
             l.geom,
-            st_astext(st_force2d(i.geom)),
+            st_astext(st_force2d(i.geometry)),
             'yes' as selection,
             l.description
             FROM {n}_timeseries.location l
             JOIN {n}_timeseries.location_metadata2 mt on mt.well_id = l.locationkey
             JOIN {n}_timeseries.timeseries t on t.locationkey = l.locationkey
             JOIN {n}_timeseries.parameter p on p.parameterkey = t.parameterkey
-            JOIN public.b_2024_ahn3 i on st_within(l.geom,i.geom)
+            JOIN public.{elevtable} i on st_within(l.geom,i.geometry)
             where mt.distance_to_railroad_m > 10 and mt.distance_to_road_m > 10 and mt.distance_to_ditch_m > 5
             ON CONFLICT(well_id)
             DO NOTHING;"""
@@ -360,9 +367,9 @@ print("created table kalibratie, validatie")
 
 # bear in mind ownership of the tables
 # does not work inside python and needs to be done in pgadmin
-user = "dees"
+# %%
 strsql = f"reassign owned by {user} to qsomers"
 with engine.begin() as connection:
     connection.execute(text(strsql))
 
-# %%
+
