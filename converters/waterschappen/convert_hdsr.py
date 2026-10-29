@@ -213,7 +213,7 @@ for column in data:
         f"# y-coor: {metadata_location["Y"].item()}",
         "*",
         "> datumtijd (dd-mm-yyyy / dd-mm-yyyy HH:MM:SS)",
-        ">slootwaterstand (m NAP)",
+        "> slootwaterstand (m NAP)",
     ]
 
     path_out = basedir.joinpath("bewerkt", f"SWM_{column}.txt")
@@ -245,10 +245,10 @@ for column in data:
 
     # plt.close()
 
-    # meetgegevens.index = meetgegevens.index.strftime("%d-%m-%Y %H:%M:%S")
-    # meetgegevens.reset_index().to_csv(
-    #     path_out, mode="a", sep=";", index=False, header=False
-    # )
+    meetgegevens.index = meetgegevens.index.strftime("%d-%m-%Y %H:%M:%S")
+    meetgegevens.reset_index().to_csv(
+        path_out, mode="a", sep=";", index=False, header=False
+    )
 
 end = time.time()
 print(f"Elapsed time: {end - start} seconds.")
