@@ -48,7 +48,16 @@ for path in swm_files:
 
     print(f"Working on {Path(path).stem}")
 
-    header = pd.read_excel(path, sheet_name="Blad1", nrows=5)
+    header = pd.read_excel(
+        path,
+        sheet_name="Blad1",
+        nrows=5,
+        header=None,
+    )
+
+    name = header.iloc[0, 1]
+    x = header.iloc[1, 1]
+    y = header.iloc[2, 1]
 
     values = pd.read_excel(
         path,
@@ -70,9 +79,9 @@ for path in swm_files:
     # header.to_csv(path_out, mode="w", sep=" ", index=False)
 
     header_text = (
-        f"# naam_meetpunt: {header['naam_meetpunt'].iloc[0]}\n"
-        f"# x-coor: {header['x-coor'].iloc[0]}\n"
-        f"# y-coor: {header['y-coor'].iloc[0]}\n"
+        f"# naam_meetpunt: {name}\n"
+        f"# x-coor: {x}\n"
+        f"# y-coor: {y}\n"
         "*\n"
         "> datumtijd (dd-mm-yyyy)\n"
         "> slootwaterstand (m NAP)\n"
