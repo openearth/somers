@@ -224,31 +224,31 @@ for column in data:
 
     meetgegevens = data[column]
 
-    # make a quick figure
-    fig, ax = plt.subplots()
+    # # make a quick figure
+    # fig, ax = plt.subplots()
 
-    ax.plot(meetgegevens.index, meetgegevens)
+    # ax.plot(meetgegevens.index, meetgegevens)
 
-    ax.set_xlim(meetgegevens.first_valid_index(), meetgegevens.last_valid_index())
-    ax.grid()
-    ax.set_ylabel("Slootwaterstand (cm t.o.v. NAP)")
-    ax.set_title(f"{column}")
+    # ax.set_xlim(meetgegevens.first_valid_index(), meetgegevens.last_valid_index())
+    # ax.grid()
+    # ax.set_ylabel("Slootwaterstand (cm t.o.v. NAP)")
+    # ax.set_title(f"{column}")
 
-    set_xaxis_datelabels(ax)
+    # set_xaxis_datelabels(ax)
 
-    # plt.show()
-    plt.savefig(
-        figdir.joinpath(f"Slootwaterstand {column}.png"),
-        bbox_inches="tight",
-        dpi=300,
-    )
+    # # plt.show()
+    # plt.savefig(
+    #     figdir.joinpath(f"Slootwaterstand {column}.png"),
+    #     bbox_inches="tight",
+    #     dpi=300,
+    # )
 
-    plt.close()
+    # plt.close()
 
-    meetgegevens.index = meetgegevens.index.strftime("%d-%m-%Y %H:%M:%S")
-    meetgegevens.reset_index().to_csv(
-        path_out, mode="a", sep=";", index=False, header=False
-    )
+    # meetgegevens.index = meetgegevens.index.strftime("%d-%m-%Y %H:%M:%S")
+    # meetgegevens.reset_index().to_csv(
+    #     path_out, mode="a", sep=";", index=False, header=False
+    # )
 
 end = time.time()
 print(f"Elapsed time: {end - start} seconds.")
