@@ -5,7 +5,7 @@
 import pandas as pd
 from openpyxl.styles import PatternFill
 
-path_to_handmatige_aanpassingen_2026 = "p:/11207812-somers-ontwikkeling/3-somers_development/QSOMERS/Dataverzameling 2026/handmatige_aanpassingen/handmatige_aanpassingen_2026_werkdocument_alle_kolommen.xlsx"
+path_to_handmatige_aanpassingen_2026 = "p:/11207812-somers-ontwikkeling/3-somers_development/QSOMERS/Dataverzameling 2026/handmatige_aanpassingen/handmatige_aanpassingen_2026_werkdocument.xlsx"
 path_to_handmatige_aanpassingen_2024 = "p:/11207812-somers-ontwikkeling/3-somers_development/QSOMERS/Dataverzameling 2024/handmatige_aanpassingen/handmatige_aanpassingen_kalibratie_werkdocument.xlsx"
 
 handmatige_aanpassingen_2026 = pd.read_excel(path_to_handmatige_aanpassingen_2026)
@@ -100,7 +100,7 @@ sheet_name = "handmatige_aanpassingen"
 
 matching_names = set(df_2024.index).intersection(df_2026.index)
 
-path_output = "p:/11207812-somers-ontwikkeling/3-somers_development/QSOMERS/Dataverzameling 2026/handmatige_aanpassingen/handmatige_aanpassingen_2026_updated.xlsx"
+path_output = "p:/11207812-somers-ontwikkeling/3-somers_development/QSOMERS/Dataverzameling 2026/handmatige_aanpassingen/handmatige_aanpassingen_2026_updated_20261028.xlsx"
 # handmatige_aanpassingen_2026_updated.to_excel(path_output, index=False)
 
 # Write DataFrame to Excel
