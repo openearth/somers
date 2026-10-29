@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 
 excel_path = Path(
-    r"C:/Users/reusen/OneDrive - Stichting Deltares/Documents - NOBV_ Ontwikkeling SOMERS/Kalibratie/handmatige_aanpassingen_2026_updated_20261028.xlsx"
+    r"p:\11207812-somers-ontwikkeling\3-somers_development\QSOMERS\Dataverzameling 2026\handmatige_aanpassingen\handmatige_aanpassingen_2026_updated_20261028_for_copy_selected_figures.xlsx"
 )
 
 df = pd.read_excel(
@@ -33,7 +33,7 @@ target_folder = Path(
 )
 
 # Get the names from the Excel dataframe
-names = set(df["name"].dropna().astype(str))
+names = set(df["well_id"].dropna().astype(str))
 
 # Create target folder if it does not exist yet
 target_folder.mkdir(parents=True, exist_ok=True)
