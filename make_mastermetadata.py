@@ -20,7 +20,8 @@
 #   --------------------------------------------------------------------
 #
 # This tool is part of <a href="http://www.OpenEarth.eu">OpenEarthTools</a>.
-# OpenEarthTools is an online collaboration to share and manage data and
+# OpenEarthTools is an online colly
+# aboration to share and manage data and
 # programming tools in an open source, version controlled environment.
 # Sign up to recieve regular updates of this function, and to contribute
 # your own tools.
@@ -37,9 +38,9 @@ from ts_helpers.ts_helpers import establishconnection, testconnection
 from db_helpers import preptable, tablesetup, create_location_metadatatable
 
 # globals
-local = True
+local = False
 if local:
-    cf = r"C:\develop\somers\configuration_local.txt"
+    cf = r"C:\projecten\groundwater\config_local_qsomers.txt"
 else:
     cf = r"C:\projecten\groundwater\config_online_qsomers.txt"
 session, engine = establishconnection(cf)
@@ -63,7 +64,7 @@ dcttable["waterschappen_timeseries.location"] = "placeholder"  # handmetingen
 dcttable["nobv_timeseries.location"] = "placeholder"  # nobv handmatige bewerkingen data
 
 elevtable = "somers_input_ahn3_2025"
-user = 'hendrik_gt'
+user = 'dees'
 
 # check if schema exists, if not create it
 strsql = f"create schema if not exists {schema}"

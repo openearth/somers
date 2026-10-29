@@ -26,6 +26,8 @@
 
 """
 Importeren van handmatige invoer in de database, uniforme input per waterschap
+
+Measurement delimiters are automatically detected (comma or semicolon).
 """
 # %%
 import os
@@ -47,7 +49,7 @@ project_root = os.path.abspath(os.path.join(current_dir, '..'))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 # Add the project root to the PYTHONPATH
 sys.path.append(project_root)
-
+#%%
 # third party packages
 from sqlalchemy import ARRAY,text
 from sqlalchemy.dialects import postgresql
@@ -224,19 +226,20 @@ else:
 session, engine = establishconnection(fc)
 
 base = Path(r"P:\11207812-somers-ontwikkeling\3-somers_development\QSOMERS\Dataverzameling 2026\Dataverzameling\handmatige_uitvraag_bestanden")
-wb_name_list = ["AGV", 
-                "HunzeEnAas", 
-                "Rijnland", 
-                "Rivierenland",
-                "WDOD",
-                "WSHD",
-                "Wetterskip",
-                'Delfland',
-                'Noorderzijlvest',
-                'HDSR',
+# wb_name_list = ["AGV", 
+#                 "HunzeEnAas", 
+#                 "Rijnland", 
+#                 "Rivierenland",
+#                 "WDOD",
+#                 "WSHD",
+#                 "Wetterskip",
+#                 'Delfland',
+#                 'Noorderzijlvest',
+wb_name_list = ['HDSR',
                 'HHNK',
-                'HHSK',
-                'Vallei_en_Veluwe'] #add WB which are ready to be processed
+                'HHSK']
+                # 'HHSK',
+                # 'Vallei_en_Veluwe'] #add WB which are ready to be processed
 
 # assigning parameters, either grondwaterstand or slootwaterpeil
 # zoetwaterstijghoogtes
@@ -282,7 +285,7 @@ for wb_name in wb_name_list:
     exists, count = check_waterboard_exists(wb_name)
     if exists:
         print(f"{wb_name}: Already has {count} locations in database")
-        continue  # Skip this waterboard, need to change if one row needs to be updated
+        # continue  # Skip this waterboard, need to change if one row needs to be updated
     else:
         print(f"{wb_name}: No existing data, starting fresh")
     
@@ -309,7 +312,8 @@ for wb_name in wb_name_list:
                 fskey = loadfilesource(os.path.join(root, file), fc, f"{name}_{data}")
                 dfx = pd.read_csv(
                     os.path.join(root, file),
-                    delimiter=";",
+                    sep=None,
+                    engine="python",
                     skiprows=nrrows,
                     header=None,
                     names=colnames,
@@ -353,7 +357,8 @@ for wb_name in wb_name_list:
 
                     dfx = pd.read_csv(
                         os.path.join(root, file),
-                        delimiter=";",
+                        sep=None,
+                        engine="python",
                         skiprows=nrrows,
                         header=None,
                         names=colnames,
@@ -376,30 +381,34 @@ for wb_name in wb_name_list:
                                 dfx["datetime"], format="%d-%m-%Y %H:%M"
                             )
 
-                    # dfx['scalarvalue'] = dfx['scalarvalue'].str.replace(",", ".")
-                    dfx["scalarvalue"] = dfx["scalarvalue"].astype("float64")
+                   # dfx['scalarvalue'] = dfx['scalarvalue'].str.replace(",", ".")
+                    dfx["scalarvalue"] = pd.to_numeric(
+                        dfx["scalarvalue"], errors="coerce"
+                    )
                     dfx = dfx.dropna()
-                    dfx.sort_values(by=["datetime"], inplace=True)
 
-                    r = latest_entry(
-                        skeyz
-                    )  # find if there was already a timeseries stored in the database
-                    duplicate_rows = dfx[dfx.duplicated()]  # find duplicated entries
-                    # print(duplicate_rows)
-                    dfx = dfx.drop_duplicates()
-                    print(r, skeyz)
-                    if r != dfx["datetime"].iloc[-1]:
-                        dfx["timeserieskey"] = skeyz
-                        dfx["flags"] = flag
-                        dfx.to_sql(
-                            "timeseriesvaluesandflags",
-                            engine,
-                            index=False,
-                            if_exists="append",
-                            schema="waterschappen_timeseries",
-                        )
+                    if dfx.empty:
+                        print("Skipping: no scalar values")
                     else:
-                        print("not updating")
+                        r = latest_entry(skeyz)
+                        duplicate_rows = dfx[dfx.duplicated()]  # if data has duplicated
+                        # print(duplicate_rows)
+                        dfx = dfx.drop_duplicates()  # remove the duplicated
+                        dfx.sort_values(by=["datetime"], inplace=True)
+
+                        print('updating')
+                        if r != dfx["datetime"].iloc[-1]:
+                            dfx["timeserieskey"] = skeyz
+                            dfx["flags"] = flag
+                            dfx.to_sql(
+                                "timeseriesvaluesandflags",
+                                engine,
+                                index=False,
+                                if_exists="append",
+                                schema="waterschappen_timeseries",
+                            )
+                        else:
+                            print("not updating:", r, dfx['datetime'].iloc[-1])
 
                 elif data == "GWM":
                     df = extract_info_from_text_file(os.path.join(root, file))
@@ -479,7 +488,8 @@ for wb_name in wb_name_list:
 
                     dfx = pd.read_csv(
                         os.path.join(root, file),
-                        sep=";",
+                        sep=None,
+                        engine="python",
                         skiprows=nrrows,
                         header=None,
                         names=colnames,
@@ -502,29 +512,33 @@ for wb_name in wb_name_list:
                                 dfx["datetime"], format="%d-%m-%Y %H:%M"
                             )
                     # dfx['scalarvalue'] = dfx['scalarvalue'].str.replace(",", ".")
-                    dfx["scalarvalue"] = dfx["scalarvalue"].astype("float64")
+                    dfx["scalarvalue"] = pd.to_numeric(
+                        dfx["scalarvalue"], errors="coerce"
+                    )
                     dfx = dfx.dropna()
 
-                    r = latest_entry(skeyz)
-                    duplicate_rows = dfx[dfx.duplicated()]  # if data has duplicated
-                    # print(duplicate_rows)
-                    dfx = dfx.drop_duplicates()  # remove the duplicated
-                    dfx.sort_values(by=["datetime"], inplace=True)
-
-                    print(r, skeyz)
-                    print('updating')
-                    if r != dfx["datetime"].iloc[-1]:
-                        dfx["timeserieskey"] = skeyz
-                        dfx["flags"] = flag
-                        dfx.to_sql(
-                            "timeseriesvaluesandflags",
-                            engine,
-                            index=False,
-                            if_exists="append",
-                            schema="waterschappen_timeseries",
-                        )
+                    if dfx.empty:
+                        print("Skipping: no scalar values")
                     else:
-                        print("not updating:", r, dfx['datetime'].iloc[-1])
+                        r = latest_entry(skeyz)
+                        duplicate_rows = dfx[dfx.duplicated()]  # if data has duplicated
+                        # print(duplicate_rows)
+                        dfx = dfx.drop_duplicates()  # remove the duplicated
+                        dfx.sort_values(by=["datetime"], inplace=True)
+
+                        print('updating')
+                        if r != dfx["datetime"].iloc[-1]:
+                            dfx["timeserieskey"] = skeyz
+                            dfx["flags"] = flag
+                            dfx.to_sql(
+                                "timeseriesvaluesandflags",
+                                engine,
+                                index=False,
+                                if_exists="append",
+                                schema="waterschappen_timeseries",
+                            )
+                        else:
+                            print("not updating:", r, dfx['datetime'].iloc[-1])
 
                 else:
                     print("NOT SWM or GWM:", name)

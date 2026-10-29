@@ -92,7 +92,7 @@ def resetindex(engine,schema):
             conn.execute(text(strSql))
         
 if __name__ == "__main__":
-    local = False
+    local = True
     if local:
         # fc = r"C:\develop\somers\configuration_local.txt"
         fc = r'C:\projecten\groundwater\config_local_qsomers.txt'
