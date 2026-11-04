@@ -155,7 +155,7 @@ df_2024 = pd.read_excel(
     r"p:\11207812-somers-ontwikkeling\3-somers_development\QSOMERS\Dataverzameling 2024\handmatige_aanpassingen\handmatige_aanpassingen_kalibratie_werkdocument.xlsx"
 )
 
-outputpath = Path("p:/11207812-somers-ontwikkeling/3-somers_development/QSOMERS/Dataverzameling 2026/handmatige_aanpassingen/handmatige_aanpassingen_2026_werkdocument.xlsx")
+outputpath = Path("p:/11207812-somers-ontwikkeling/3-somers_development/QSOMERS/Dataverzameling 2026/handmatige_aanpassingen/handmatige_aanpassingen_2026_werkdocument_2026_1104.xlsx")
 
 df.to_excel(outputpath, index=False)
 
