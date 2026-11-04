@@ -109,7 +109,7 @@ from sqlalchemy import text
 from ts_helpers.ts_helpers_waterschappen import establishconnection
 
 figdir = Path(
-    "p:/11207812-somers-ontwikkeling/3-somers_development/QSOMERS/Dataverzameling 2026/Dataverzameling/timeseries_metadata_ongecontroleerd/"
+    "p:/11207812-somers-ontwikkeling/3-somers_development/QSOMERS/Dataverzameling 2026/Dataverzameling/timeseries_metadata_ongecontroleerd_2026_1104/"
 )
 
 fc = "p:/11207812-somers-ontwikkeling/3-somers_development/QSOMERS/credentials/connection_online_jr.txt"
@@ -127,17 +127,17 @@ ditch_ids = df["ditch_id"]
 ditch_names = df["ditch_name"]
 surface_levels = df["altitude_m_nap"]
 
-# # testje voor slootpeil Berkenwoude
-timeseries = find_timeseries_data("regiodeal", 4)  # Berkenwoude_sloot
-# timeseries = find_timeseries_data("nobv", 47) #LYD_OP_12
-# timeseries = find_timeseries_data("bro", 1149)
-# timeseries = find_timeseries_data("waterschappen", 137)  # WDOD_SWM_10485S
-# timeseries = find_timeseries_data("bro", 1152)
-# timeseries = find_timeseries_data("waterschappen", 297) # Wetterskip_SWM_MM_SPC_PBS
-# timeseries = find_timeseries_data("waterschappen", 288) # Wetterskip_SWM_GLB_BOR1
-# timeseries = find_timeseries_data("nobv", 38) # ZEG_RF16_14
+# # # testje voor slootpeil Berkenwoude
+# timeseries = find_timeseries_data("regiodeal", 4)  # Berkenwoude_sloot
+# # timeseries = find_timeseries_data("nobv", 47) #LYD_OP_12
+# # timeseries = find_timeseries_data("bro", 1149)
+# # timeseries = find_timeseries_data("waterschappen", 137)  # WDOD_SWM_10485S
+# # timeseries = find_timeseries_data("bro", 1152)
+# # timeseries = find_timeseries_data("waterschappen", 297) # Wetterskip_SWM_MM_SPC_PBS
+# # timeseries = find_timeseries_data("waterschappen", 288) # Wetterskip_SWM_GLB_BOR1
+# # timeseries = find_timeseries_data("nobv", 38) # ZEG_RF16_14
 
-print(timeseries)
+# print(timeseries)
 
 # regiodeal_wells = [well for well in wells_ids if "regiodeal" in well]
 
