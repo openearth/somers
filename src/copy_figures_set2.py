@@ -12,7 +12,7 @@ df = pd.read_excel(
     sheet_name="handmatige_aanpassingen",
 )
 
-df = df[df["selection"] == "yes"]
+# df = df[df["selection"] == "yes"]
 
 source_folder = Path(
     r"P:\11207812-somers-ontwikkeling"
