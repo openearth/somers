@@ -13,7 +13,7 @@ handmatige_aanpassingen_2024 = pd.read_excel(path_to_handmatige_aanpassingen_202
 
 # drop the columns ditch_id and ditch_name
 handmatige_aanpassingen_2024 = handmatige_aanpassingen_2024.drop(
-    columns=["ditch_id", "ditch_name", "well_id", "start_date", "end_date"],
+    columns=["ditch_id", "ditch_name", "start_date", "end_date"],  # , "well_id"
     errors="ignore",
 )
 
@@ -84,12 +84,7 @@ df_2026.update(df_2024)
 handmatige_aanpassingen_2026_updated = df_2026.reset_index()
 
 print(f"2026 before filtering with 2024 file: {len(handmatige_aanpassingen_2026)}")
-print(
-    f"2026 after filtering with 2024 file:  {len(matching_names[matching_names==True])}"
-)
-print(
-    f"So in 2024 dataset and also present in 2026:     {len(handmatige_aanpassingen_2026) - len(matching_names[matching_names==True])}"
-)
+print(f"Already present in 2024 file:  {len(matching_names[matching_names==True])}")
 
 ########################################################################################
 # output the values to an excel file, also highlight the values that changed
