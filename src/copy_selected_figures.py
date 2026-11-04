@@ -4,8 +4,7 @@ from pathlib import Path
 import pandas as pd
 
 excel_path = Path(
-    r"p:\11207812-somers-ontwikkeling\3-somers_development\QSOMERS\Dataverzameling 2026\handmatige_aanpassingen\handmatige_aanpassingen_2026_updated_20261028_for_copy_selected_figures.xlsx"
-)
+    "p:/11207812-somers-ontwikkeling/3-somers_development/QSOMERS/Dataverzameling 2026/handmatige_aanpassingen/handmatige_aanpassingen_2026_updated_20261104_for_copy_extra_figures.xlsx")
 
 df = pd.read_excel(
     excel_path,
